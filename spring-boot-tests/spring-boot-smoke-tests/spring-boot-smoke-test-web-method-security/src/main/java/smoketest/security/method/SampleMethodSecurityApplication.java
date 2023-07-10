@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @SpringBootApplication
 @EnableMethodSecurity(securedEnabled = true)
 public class SampleMethodSecurityApplication implements WebMvcConfigurer {
@@ -58,8 +60,11 @@ public class SampleMethodSecurityApplication implements WebMvcConfigurer {
 		@Bean
 		public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
 			return new InMemoryUserDetailsManager(
-					User.withDefaultPasswordEncoder().username("admin").password("admin")
-							.roles("ADMIN", "USER", "ACTUATOR").build(),
+					User.withDefaultPasswordEncoder()
+						.username("admin")
+						.password("admin")
+						.roles("ADMIN", "USER", "ACTUATOR")
+						.build(),
 					User.withDefaultPasswordEncoder().username("user").password("user").roles("USER").build());
 		}
 
@@ -70,12 +75,12 @@ public class SampleMethodSecurityApplication implements WebMvcConfigurer {
 
 		@Bean
 		SecurityFilterChain configure(HttpSecurity http) throws Exception {
-			http.csrf().disable();
+			http.csrf((csrf) -> csrf.disable());
 			http.authorizeHttpRequests((requests) -> {
 				requests.dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll();
 				requests.anyRequest().fullyAuthenticated();
 			});
-			http.httpBasic();
+			http.httpBasic(withDefaults());
 			http.formLogin((form) -> form.loginPage("/login").permitAll());
 			http.exceptionHandling((exceptions) -> exceptions.accessDeniedPage("/access"));
 			return http.build();
@@ -89,10 +94,10 @@ public class SampleMethodSecurityApplication implements WebMvcConfigurer {
 
 		@Bean
 		SecurityFilterChain actuatorSecurity(HttpSecurity http) throws Exception {
-			http.csrf().disable();
+			http.csrf((csrf) -> csrf.disable());
 			http.securityMatcher(EndpointRequest.toAnyEndpoint());
 			http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
-			http.httpBasic();
+			http.httpBasic(withDefaults());
 			return http.build();
 		}
 

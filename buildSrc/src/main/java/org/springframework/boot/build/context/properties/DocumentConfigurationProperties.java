@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,7 @@ public class DocumentConfigurationProperties extends DefaultTask {
 		snippets.add("application-properties.security", "Security Properties", this::securityPrefixes);
 		snippets.add("application-properties.rsocket", "RSocket Properties", this::rsocketPrefixes);
 		snippets.add("application-properties.actuator", "Actuator Properties", this::actuatorPrefixes);
+		snippets.add("application-properties.docker-compose", "Docker Compose Properties", this::dockerComposePrefixes);
 		snippets.add("application-properties.devtools", "Devtools Properties", this::devtoolsPrefixes);
 		snippets.add("application-properties.testing", "Testing Properties", this::testingPrefixes);
 		snippets.writeTo(this.outputDir.toPath());
@@ -103,7 +104,9 @@ public class DocumentConfigurationProperties extends DefaultTask {
 		config.accept("spring.profiles");
 		config.accept("spring.quartz");
 		config.accept("spring.reactor");
+		config.accept("spring.ssl");
 		config.accept("spring.task");
+		config.accept("spring.threads");
 		config.accept("spring.mandatory-file-encoding");
 		config.accept("info");
 		config.accept("spring.output.ansi.enabled");
@@ -209,6 +212,10 @@ public class DocumentConfigurationProperties extends DefaultTask {
 
 	private void actuatorPrefixes(Config prefix) {
 		prefix.accept("management");
+	}
+
+	private void dockerComposePrefixes(Config prefix) {
+		prefix.accept("spring.docker.compose");
 	}
 
 	private void devtoolsPrefixes(Config prefix) {

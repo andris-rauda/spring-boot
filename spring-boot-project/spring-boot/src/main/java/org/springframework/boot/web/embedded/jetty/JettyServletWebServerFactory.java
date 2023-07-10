@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.eclipse.jetty.http.MimeTypes;
 import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
 import org.eclipse.jetty.server.AbstractConnector;
 import org.eclipse.jetty.server.ConnectionFactory;
+import org.eclipse.jetty.server.ConnectionLimit;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -74,6 +75,7 @@ import org.springframework.boot.web.server.Cookie.SameSite;
 import org.springframework.boot.web.server.ErrorPage;
 import org.springframework.boot.web.server.MimeMappings;
 import org.springframework.boot.web.server.Shutdown;
+import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.server.AbstractServletWebServerFactory;
@@ -100,6 +102,7 @@ import org.springframework.util.StringUtils;
  * @author Eddú Meléndez
  * @author Venil Noronha
  * @author Henri Kerola
+ * @author Moritz Halbritter
  * @since 2.0.0
  * @see #setPort(int)
  * @see #setConfigurations(Collection)
@@ -127,6 +130,8 @@ public class JettyServletWebServerFactory extends AbstractServletWebServerFactor
 	private ResourceLoader resourceLoader;
 
 	private ThreadPool threadPool;
+
+	private int maxConnections = -1;
 
 	/**
 	 * Create a new {@link JettyServletWebServerFactory} instance.
@@ -162,7 +167,10 @@ public class JettyServletWebServerFactory extends AbstractServletWebServerFactor
 		configureWebAppContext(context, initializers);
 		server.setHandler(addHandlerWrappers(context));
 		this.logger.info("Server initialized with port: " + port);
-		if (getSsl() != null && getSsl().isEnabled()) {
+		if (this.maxConnections > -1) {
+			server.addBean(new ConnectionLimit(this.maxConnections, server));
+		}
+		if (Ssl.isEnabled(getSsl())) {
 			customizeSsl(server, address);
 		}
 		for (JettyServerCustomizer customizer : getServerCustomizers()) {
@@ -220,7 +228,7 @@ public class JettyServletWebServerFactory extends AbstractServletWebServerFactor
 	}
 
 	private void customizeSsl(Server server, InetSocketAddress address) {
-		new SslServerCustomizer(address, getSsl(), getOrCreateSslStoreProvider(), getHttp2()).customize(server);
+		new SslServerCustomizer(getHttp2(), address, getSsl().getClientAuth(), getSslBundle()).customize(server);
 	}
 
 	/**
@@ -278,7 +286,7 @@ public class JettyServletWebServerFactory extends AbstractServletWebServerFactor
 
 	private void addLocaleMappings(WebAppContext context) {
 		getLocaleCharsetMappings()
-				.forEach((locale, charset) -> context.addLocaleEncoding(locale.toString(), charset.toString()));
+			.forEach((locale, charset) -> context.addLocaleEncoding(locale.toString(), charset.toString()));
 	}
 
 	private File getTempDirectory() {
@@ -455,6 +463,11 @@ public class JettyServletWebServerFactory extends AbstractServletWebServerFactor
 	@Override
 	public void setSelectors(int selectors) {
 		this.selectors = selectors;
+	}
+
+	@Override
+	public void setMaxConnections(int maxConnections) {
+		this.maxConnections = maxConnections;
 	}
 
 	/**

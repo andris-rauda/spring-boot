@@ -58,7 +58,7 @@ import org.springframework.boot.logging.LoggerConfiguration;
 import org.springframework.boot.logging.LoggerGroups;
 import org.springframework.boot.logging.LoggingInitializationContext;
 import org.springframework.boot.logging.LoggingSystem;
-import org.springframework.boot.logging.LoggingSystemProperties;
+import org.springframework.boot.logging.LoggingSystemProperty;
 import org.springframework.boot.logging.java.JavaLoggingSystem;
 import org.springframework.boot.system.ApplicationPid;
 import org.springframework.boot.testsupport.classpath.ClassPathExclusions;
@@ -92,6 +92,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * @author Ben Hale
  * @author Fahim Farook
  * @author Eddú Meléndez
+ * @author Jonatan Ivanov
  */
 @ExtendWith(OutputCaptureExtension.class)
 @ClassPathExclusions("log4j*.jar")
@@ -177,11 +178,11 @@ class LoggingApplicationListenerTests {
 	@Test
 	void overrideConfigDoesNotExist() {
 		addPropertiesToEnvironment(this.context, "logging.config=doesnotexist.xml");
-		assertThatIllegalStateException().isThrownBy(
-				() -> this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader()));
+		assertThatIllegalStateException()
+			.isThrownBy(() -> this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader()));
 		assertThat(this.output)
-				.contains("Logging system failed to initialize using configuration from 'doesnotexist.xml'")
-				.doesNotContain("JoranException");
+			.contains("Logging system failed to initialize using configuration from 'doesnotexist.xml'")
+			.doesNotContain("JoranException");
 	}
 
 	@Test
@@ -343,8 +344,8 @@ class LoggingApplicationListenerTests {
 	void parseLevelsFails() {
 		this.logger.setLevel(Level.INFO);
 		addPropertiesToEnvironment(this.context, "logging.level.org.springframework.boot=GARBAGE");
-		assertThatExceptionOfType(BindException.class).isThrownBy(
-				() -> this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader()));
+		assertThatExceptionOfType(BindException.class)
+			.isThrownBy(() -> this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader()));
 	}
 
 	@Test
@@ -467,16 +468,16 @@ class LoggingApplicationListenerTests {
 	void systemPropertiesAreSetForLoggingConfiguration() {
 		addPropertiesToEnvironment(this.context, "logging.exception-conversion-word=conversion",
 				"logging.file.name=" + this.logFile, "logging.file.path=path", "logging.pattern.console=console",
-				"logging.pattern.file=file", "logging.pattern.level=level",
+				"logging.pattern.file=file", "logging.pattern.level=level", "logging.pattern.correlation=correlation",
 				"logging.pattern.rolling-file-name=my.log.%d{yyyyMMdd}.%i.gz");
 		this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader());
-		assertThat(System.getProperty(LoggingSystemProperties.CONSOLE_LOG_PATTERN)).isEqualTo("console");
-		assertThat(System.getProperty(LoggingSystemProperties.FILE_LOG_PATTERN)).isEqualTo("file");
-		assertThat(System.getProperty(LoggingSystemProperties.EXCEPTION_CONVERSION_WORD)).isEqualTo("conversion");
-		assertThat(System.getProperty(LoggingSystemProperties.LOG_FILE)).isEqualTo(this.logFile.getAbsolutePath());
-		assertThat(System.getProperty(LoggingSystemProperties.LOG_LEVEL_PATTERN)).isEqualTo("level");
-		assertThat(System.getProperty(LoggingSystemProperties.LOG_PATH)).isEqualTo("path");
-		assertThat(System.getProperty(LoggingSystemProperties.PID_KEY)).isNotNull();
+		assertThat(getSystemProperty(LoggingSystemProperty.CONSOLE_PATTERN)).isEqualTo("console");
+		assertThat(getSystemProperty(LoggingSystemProperty.FILE_PATTERN)).isEqualTo("file");
+		assertThat(getSystemProperty(LoggingSystemProperty.EXCEPTION_CONVERSION_WORD)).isEqualTo("conversion");
+		assertThat(getSystemProperty(LoggingSystemProperty.LOG_FILE)).isEqualTo(this.logFile.getAbsolutePath());
+		assertThat(getSystemProperty(LoggingSystemProperty.LEVEL_PATTERN)).isEqualTo("level");
+		assertThat(getSystemProperty(LoggingSystemProperty.LOG_PATH)).isEqualTo("path");
+		assertThat(getSystemProperty(LoggingSystemProperty.PID)).isNotNull();
 	}
 
 	@Test
@@ -484,24 +485,23 @@ class LoggingApplicationListenerTests {
 		// gh-7719
 		addPropertiesToEnvironment(this.context, "logging.pattern.console=console ${doesnotexist}");
 		this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader());
-		assertThat(System.getProperty(LoggingSystemProperties.CONSOLE_LOG_PATTERN))
-				.isEqualTo("console ${doesnotexist}");
+		assertThat(getSystemProperty(LoggingSystemProperty.CONSOLE_PATTERN)).isEqualTo("console ${doesnotexist}");
 	}
 
 	@Test
 	void environmentPropertiesResolvePlaceholders() {
 		addPropertiesToEnvironment(this.context, "logging.pattern.console=console ${pid}");
 		this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader());
-		assertThat(System.getProperty(LoggingSystemProperties.CONSOLE_LOG_PATTERN))
-				.isEqualTo(this.context.getEnvironment().getProperty("logging.pattern.console"));
+		assertThat(getSystemProperty(LoggingSystemProperty.CONSOLE_PATTERN))
+			.isEqualTo(this.context.getEnvironment().getProperty("logging.pattern.console"));
 	}
 
 	@Test
 	void logFilePropertiesCanReferenceSystemProperties() {
 		addPropertiesToEnvironment(this.context, "logging.file.name=" + this.tempDir + "${PID}.log");
 		this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader());
-		assertThat(System.getProperty(LoggingSystemProperties.LOG_FILE))
-				.isEqualTo(this.tempDir + new ApplicationPid().toString() + ".log");
+		assertThat(getSystemProperty(LoggingSystemProperty.LOG_FILE))
+			.isEqualTo(this.tempDir + new ApplicationPid().toString() + ".log");
 	}
 
 	@Test
@@ -521,8 +521,11 @@ class LoggingApplicationListenerTests {
 		System.setProperty(LoggingSystem.SYSTEM_PROPERTY, TestCleanupLoggingSystem.class.getName());
 		this.springApplication.setWebApplicationType(WebApplicationType.NONE);
 		ConfigurableApplicationContext context = this.springApplication.run();
-		ApplicationListener<?> listener = this.springApplication.getListeners().stream()
-				.filter(LoggingApplicationListener.class::isInstance).findFirst().get();
+		ApplicationListener<?> listener = this.springApplication.getListeners()
+			.stream()
+			.filter(LoggingApplicationListener.class::isInstance)
+			.findFirst()
+			.get();
 		TestCleanupLoggingSystem loggingSystem = (TestCleanupLoggingSystem) ReflectionTestUtils.getField(listener,
 				"loggingSystem");
 		assertThat(loggingSystem.cleanedUp).isFalse();
@@ -543,7 +546,7 @@ class LoggingApplicationListenerTests {
 	void lowPriorityPropertySourceShouldNotOverrideRootLoggerConfig() {
 		MutablePropertySources propertySources = this.context.getEnvironment().getPropertySources();
 		propertySources
-				.addFirst(new MapPropertySource("test1", Collections.singletonMap("logging.level.ROOT", "DEBUG")));
+			.addFirst(new MapPropertySource("test1", Collections.singletonMap("logging.level.ROOT", "DEBUG")));
 		propertySources.addLast(new MapPropertySource("test2", Collections.singletonMap("logging.level.root", "WARN")));
 		this.listener.initialize(this.context.getEnvironment(), this.context.getClassLoader());
 		this.logger.debug("testatdebug");
@@ -570,6 +573,10 @@ class LoggingApplicationListenerTests {
 		assertTraceEnabled("com.foo", false);
 		assertTraceEnabled("com.foo.bar", true);
 		assertTraceEnabled("com.foo.baz", true);
+	}
+
+	private String getSystemProperty(LoggingSystemProperty property) {
+		return System.getProperty(property.getEnvironmentVariableName());
 	}
 
 	private void assertTraceEnabled(String name, boolean expected) {

@@ -21,8 +21,7 @@ publishing.publications.withType(MavenPublication) {
 			properties {
 				delegate."java.version"('17')
 				delegate."resource.delimiter"('@')
-				delegate."maven.compiler.source"('${java.version}')
-				delegate."maven.compiler.target"('${java.version}')
+				delegate."maven.compiler.release"('${java.version}')
 				delegate."project.build.sourceEncoding"('UTF-8')
 				delegate."project.reporting.outputEncoding"('UTF-8')
 			}
@@ -234,6 +233,17 @@ publishing.publications.withType(MavenPublication) {
 					build {
 						pluginManagement {
 							plugins {
+								plugin {
+									delegate.groupId('org.apache.maven.plugins')
+									delegate.artifactId('maven-jar-plugin')
+									configuration {
+										archive {
+											manifestEntries {
+												delegate.'Spring-Boot-Native-Processed'("true")
+											}
+										}
+									}
+								}
 								plugin {
 									delegate.groupId('org.springframework.boot')
 									delegate.artifactId('spring-boot-maven-plugin')

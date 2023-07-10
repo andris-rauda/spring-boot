@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,7 +171,7 @@ public class FlywayProperties {
 	/**
 	 * Target version up to which migrations should be considered.
 	 */
-	private String target;
+	private String target = "latest";
 
 	/**
 	 * Login user of the database to migrate.
@@ -252,6 +252,26 @@ public class FlywayProperties {
 	 * Whether to automatically call validate when performing a migration.
 	 */
 	private boolean validateOnMigrate = true;
+
+	/**
+	 * Prefix of placeholders in migration scripts.
+	 */
+	private String scriptPlaceholderPrefix = "FP__";
+
+	/**
+	 * Suffix of placeholders in migration scripts.
+	 */
+	private String scriptPlaceholderSuffix = "__";
+
+	/**
+	 * Whether Flyway should execute SQL within a transaction.
+	 */
+	private boolean executeInTransaction = true;
+
+	/**
+	 * Loggers Flyway should use.
+	 */
+	private String[] loggers = { "slf4j" };
 
 	/**
 	 * Whether to batch SQL statements when executing them. Requires Flyway Teams.
@@ -351,16 +371,6 @@ public class FlywayProperties {
 	 * Flyway Teams.
 	 */
 	private Boolean detectEncoding;
-
-	/**
-	 * Prefix of placeholders in migration scripts.
-	 */
-	private String scriptPlaceholderPrefix = "FP__";
-
-	/**
-	 * Suffix of placeholders in migration scripts.
-	 */
-	private String scriptPlaceholderSuffix = "__";
 
 	public boolean isEnabled() {
 		return this.enabled;
@@ -571,7 +581,7 @@ public class FlywayProperties {
 	}
 
 	public String getPassword() {
-		return (this.password != null) ? this.password : "";
+		return this.password;
 	}
 
 	public void setPassword(String password) {
@@ -680,6 +690,38 @@ public class FlywayProperties {
 
 	public void setValidateOnMigrate(boolean validateOnMigrate) {
 		this.validateOnMigrate = validateOnMigrate;
+	}
+
+	public String getScriptPlaceholderPrefix() {
+		return this.scriptPlaceholderPrefix;
+	}
+
+	public void setScriptPlaceholderPrefix(String scriptPlaceholderPrefix) {
+		this.scriptPlaceholderPrefix = scriptPlaceholderPrefix;
+	}
+
+	public String getScriptPlaceholderSuffix() {
+		return this.scriptPlaceholderSuffix;
+	}
+
+	public void setScriptPlaceholderSuffix(String scriptPlaceholderSuffix) {
+		this.scriptPlaceholderSuffix = scriptPlaceholderSuffix;
+	}
+
+	public boolean isExecuteInTransaction() {
+		return this.executeInTransaction;
+	}
+
+	public void setExecuteInTransaction(boolean executeInTransaction) {
+		this.executeInTransaction = executeInTransaction;
+	}
+
+	public String[] getLoggers() {
+		return this.loggers;
+	}
+
+	public void setLoggers(String[] loggers) {
+		this.loggers = loggers;
 	}
 
 	public Boolean getBatch() {
@@ -824,22 +866,6 @@ public class FlywayProperties {
 
 	public void setDetectEncoding(final Boolean detectEncoding) {
 		this.detectEncoding = detectEncoding;
-	}
-
-	public String getScriptPlaceholderPrefix() {
-		return this.scriptPlaceholderPrefix;
-	}
-
-	public void setScriptPlaceholderPrefix(String scriptPlaceholderPrefix) {
-		this.scriptPlaceholderPrefix = scriptPlaceholderPrefix;
-	}
-
-	public String getScriptPlaceholderSuffix() {
-		return this.scriptPlaceholderSuffix;
-	}
-
-	public void setScriptPlaceholderSuffix(String scriptPlaceholderSuffix) {
-		this.scriptPlaceholderSuffix = scriptPlaceholderSuffix;
 	}
 
 }

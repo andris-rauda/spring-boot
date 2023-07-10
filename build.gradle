@@ -1,7 +1,7 @@
 plugins {
 	id "base"
 	id "org.jetbrains.kotlin.jvm" apply false // https://youtrack.jetbrains.com/issue/KT-30276
-	id "io.spring.nohttp" version "0.0.10"
+	id "io.spring.nohttp" version "0.0.11"
 }
 
 description = "Spring Boot Build"
@@ -14,6 +14,9 @@ nohttp {
 	source.exclude "**/build/**"
 	source.exclude "**/out/**"
 	source.exclude "**/target/**"
+	source.exclude "**/.settings/**"
+	source.exclude "**/.classpath"
+	source.exclude "**/.project"
 	source.exclude "spring-boot-project/spring-boot-tools/spring-boot-buildpack-platform/src/test/resources/org/springframework/boot/buildpack/platform/docker/export.tar"
 }
 
@@ -40,5 +43,5 @@ allprojects {
 }
 
 tasks.named("checkstyleNohttp").configure {
-	maxHeapSize = "1g"
+	maxHeapSize = "1536m"
 }

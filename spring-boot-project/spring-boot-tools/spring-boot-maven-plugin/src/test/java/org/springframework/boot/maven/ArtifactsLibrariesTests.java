@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import org.springframework.boot.loader.tools.LibraryCallback;
 import org.springframework.boot.loader.tools.LibraryScope;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -85,11 +86,11 @@ class ArtifactsLibrariesTests {
 		given(this.artifact.getArtifactHandler()).willReturn(this.artifactHandler);
 		given(this.artifact.getScope()).willReturn("compile");
 		this.libs.doWithLibraries(this.callback);
-		then(this.callback).should().library(this.libraryCaptor.capture());
-		Library library = this.libraryCaptor.getValue();
-		assertThat(library.getFile()).isEqualTo(this.file);
-		assertThat(library.getScope()).isEqualTo(LibraryScope.COMPILE);
-		assertThat(library.isUnpackRequired()).isFalse();
+		then(this.callback).should().library(assertArg((library) -> {
+			assertThat(library.getFile()).isEqualTo(this.file);
+			assertThat(library.getScope()).isEqualTo(LibraryScope.COMPILE);
+			assertThat(library.isUnpackRequired()).isFalse();
+		}));
 	}
 
 	@Test
@@ -105,8 +106,7 @@ class ArtifactsLibrariesTests {
 		this.libs = new ArtifactsLibraries(this.artifacts, Collections.emptyList(), Collections.singleton(unpack),
 				mock(Log.class));
 		this.libs.doWithLibraries(this.callback);
-		then(this.callback).should().library(this.libraryCaptor.capture());
-		assertThat(this.libraryCaptor.getValue().isUnpackRequired()).isTrue();
+		then(this.callback).should().library(assertArg((library) -> assertThat(library.isUnpackRequired()).isTrue()));
 	}
 
 	@Test
@@ -143,11 +143,11 @@ class ArtifactsLibrariesTests {
 		given(snapshotArtifact.getArtifactHandler()).willReturn(this.artifactHandler);
 		this.artifacts = Collections.singleton(snapshotArtifact);
 		new ArtifactsLibraries(this.artifacts, Collections.emptyList(), null, mock(Log.class))
-				.doWithLibraries((library) -> {
-					assertThat(library.isIncluded()).isTrue();
-					assertThat(library.isLocal()).isFalse();
-					assertThat(library.getCoordinates().getVersion()).isEqualTo("1.0-SNAPSHOT");
-				});
+			.doWithLibraries((library) -> {
+				assertThat(library.isIncluded()).isTrue();
+				assertThat(library.isLocal()).isFalse();
+				assertThat(library.getCoordinates().getVersion()).isEqualTo("1.0-SNAPSHOT");
+			});
 	}
 
 	@Test
@@ -162,7 +162,7 @@ class ArtifactsLibrariesTests {
 		given(mavenProject.getArtifact()).willReturn(artifact);
 		this.artifacts = Collections.singleton(artifact);
 		new ArtifactsLibraries(this.artifacts, Collections.singleton(mavenProject), null, mock(Log.class))
-				.doWithLibraries((library) -> assertThat(library.isLocal()).isTrue());
+			.doWithLibraries((library) -> assertThat(library.isLocal()).isTrue());
 	}
 
 	@Test
@@ -179,7 +179,7 @@ class ArtifactsLibrariesTests {
 		given(mavenProject.getAttachedArtifacts()).willReturn(Collections.singletonList(attachedArtifact));
 		this.artifacts = Collections.singleton(attachedArtifact);
 		new ArtifactsLibraries(this.artifacts, Collections.singleton(mavenProject), null, mock(Log.class))
-				.doWithLibraries((library) -> assertThat(library.isLocal()).isTrue());
+			.doWithLibraries((library) -> assertThat(library.isLocal()).isTrue());
 	}
 
 	@Test
@@ -194,7 +194,8 @@ class ArtifactsLibrariesTests {
 		given(mavenProject.getArtifact()).willReturn(artifact);
 		this.artifacts = Collections.singleton(artifact);
 		new ArtifactsLibraries(this.artifacts, Collections.emptySet(), Collections.singleton(mavenProject), null,
-				mock(Log.class)).doWithLibraries((library) -> assertThat(library.isIncluded()).isFalse());
+				mock(Log.class))
+			.doWithLibraries((library) -> assertThat(library.isIncluded()).isFalse());
 	}
 
 }

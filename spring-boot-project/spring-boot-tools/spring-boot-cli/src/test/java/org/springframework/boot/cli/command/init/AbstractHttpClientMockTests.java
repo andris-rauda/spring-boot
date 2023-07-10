@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.util.StreamUtils;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -70,8 +71,8 @@ public abstract class AbstractHttpClientMockTests {
 		byte[] content = readClasspathResource(contentPath);
 		mockHttpEntity(response, content, contentType);
 		mockStatus(response, 200);
-		given(this.http.execute(any(HttpHost.class), argThat(getForMetadata(serviceCapabilities))))
-				.willReturn(response);
+		given(this.http.executeOpen(any(HttpHost.class), argThat(getForMetadata(serviceCapabilities)), isNull()))
+			.willReturn(response);
 	}
 
 	protected byte[] readClasspathResource(String contentPath) throws IOException {
@@ -87,7 +88,7 @@ public abstract class AbstractHttpClientMockTests {
 		mockStatus(response, 200);
 		String header = (request.fileName != null) ? contentDispositionValue(request.fileName) : null;
 		mockHttpHeader(response, "Content-Disposition", header);
-		given(this.http.execute(any(HttpHost.class), argThat(getForNonMetadata()))).willReturn(response);
+		given(this.http.executeOpen(any(HttpHost.class), argThat(getForNonMetadata()), isNull())).willReturn(response);
 	}
 
 	protected void mockProjectGenerationError(int status, String message) throws IOException, JSONException {
@@ -96,14 +97,14 @@ public abstract class AbstractHttpClientMockTests {
 		ClassicHttpResponse response = mock(ClassicHttpResponse.class);
 		mockHttpEntity(response, createJsonError(status, message).getBytes(), "application/json");
 		mockStatus(response, status);
-		given(this.http.execute(any(HttpHost.class), isA(HttpGet.class))).willReturn(response);
+		given(this.http.executeOpen(any(HttpHost.class), isA(HttpGet.class), isNull())).willReturn(response);
 	}
 
 	protected void mockMetadataGetError(int status, String message) throws IOException, JSONException {
 		ClassicHttpResponse response = mock(ClassicHttpResponse.class);
 		mockHttpEntity(response, createJsonError(status, message).getBytes(), "application/json");
 		mockStatus(response, status);
-		given(this.http.execute(any(HttpHost.class), isA(HttpGet.class))).willReturn(response);
+		given(this.http.executeOpen(any(HttpHost.class), isA(HttpGet.class), isNull())).willReturn(response);
 	}
 
 	protected HttpEntity mockHttpEntity(ClassicHttpResponse response, byte[] content, String contentType) {
@@ -112,7 +113,7 @@ public abstract class AbstractHttpClientMockTests {
 			given(entity.getContent()).willReturn(new ByteArrayInputStream(content));
 			Header contentTypeHeader = (contentType != null) ? new BasicHeader("Content-Type", contentType) : null;
 			given(entity.getContentType())
-					.willReturn((contentTypeHeader != null) ? contentTypeHeader.getValue() : null);
+				.willReturn((contentTypeHeader != null) ? contentTypeHeader.getValue() : null);
 			given(response.getEntity()).willReturn(entity);
 			return entity;
 		}

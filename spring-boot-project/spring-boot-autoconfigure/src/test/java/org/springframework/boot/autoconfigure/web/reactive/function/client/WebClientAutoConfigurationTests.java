@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.boot.autoconfigure.web.reactive.function.client;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.autoconfigure.ssl.SslAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.web.codec.CodecCustomizer;
 import org.springframework.boot.web.reactive.function.client.WebClientCustomizer;
@@ -39,8 +40,9 @@ import static org.mockito.Mockito.mock;
  */
 class WebClientAutoConfigurationTests {
 
-	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner().withConfiguration(
-			AutoConfigurations.of(ClientHttpConnectorAutoConfiguration.class, WebClientAutoConfiguration.class));
+	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+		.withConfiguration(AutoConfigurations.of(ClientHttpConnectorAutoConfiguration.class,
+				WebClientAutoConfiguration.class, SslAutoConfiguration.class));
 
 	@Test
 	void shouldCreateBuilder() {
@@ -85,10 +87,18 @@ class WebClientAutoConfigurationTests {
 	@Test
 	void shouldNotCreateClientBuilderIfAlreadyPresent() {
 		this.contextRunner.withUserConfiguration(WebClientCustomizerConfig.class, CustomWebClientBuilderConfig.class)
-				.run((context) -> {
-					WebClient.Builder builder = context.getBean(WebClient.Builder.class);
-					assertThat(builder).isInstanceOf(MyWebClientBuilder.class);
-				});
+			.run((context) -> {
+				WebClient.Builder builder = context.getBean(WebClient.Builder.class);
+				assertThat(builder).isInstanceOf(MyWebClientBuilder.class);
+			});
+	}
+
+	@Test
+	void shouldCreateWebClientSsl() {
+		this.contextRunner.run((context) -> {
+			WebClientSsl webClientSsl = context.getBean(WebClientSsl.class);
+			assertThat(webClientSsl).isInstanceOf(AutoConfiguredWebClientSsl.class);
+		});
 	}
 
 	@Configuration(proxyBeanMethods = false)

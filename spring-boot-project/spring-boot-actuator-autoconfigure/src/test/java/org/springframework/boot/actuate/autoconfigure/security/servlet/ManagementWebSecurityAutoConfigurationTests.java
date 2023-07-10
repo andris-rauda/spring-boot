@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletContext;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -52,6 +51,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * Tests for {@link ManagementWebSecurityAutoConfiguration}.
@@ -126,21 +126,21 @@ class ManagementWebSecurityAutoConfigurationTests {
 	@Test
 	void backOffIfOAuth2ResourceServerAutoConfigurationPresent() {
 		this.contextRunner.withConfiguration(AutoConfigurations.of(OAuth2ResourceServerAutoConfiguration.class))
-				.withPropertyValues("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://authserver")
-				.run((context) -> assertThat(context).doesNotHaveBean(ManagementWebSecurityAutoConfiguration.class)
-						.doesNotHaveBean(MANAGEMENT_SECURITY_FILTER_CHAIN_BEAN));
+			.withPropertyValues("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://authserver")
+			.run((context) -> assertThat(context).doesNotHaveBean(ManagementWebSecurityAutoConfiguration.class)
+				.doesNotHaveBean(MANAGEMENT_SECURITY_FILTER_CHAIN_BEAN));
 	}
 
 	@Test
 	void backOffIfSaml2RelyingPartyAutoConfigurationPresent() {
 		this.contextRunner.withConfiguration(AutoConfigurations.of(Saml2RelyingPartyAutoConfiguration.class))
-				.withPropertyValues(
-						"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.single-sign-on.url=https://simplesaml-for-spring-saml/SSOService.php",
-						"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.single-sign-on.sign-request=false",
-						"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.entity-id=https://simplesaml-for-spring-saml.cfapps.io/saml2/idp/metadata.php",
-						"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.verification.credentials[0].certificate-location=classpath:saml/certificate-location")
-				.run((context) -> assertThat(context).doesNotHaveBean(ManagementWebSecurityAutoConfiguration.class)
-						.doesNotHaveBean(MANAGEMENT_SECURITY_FILTER_CHAIN_BEAN));
+			.withPropertyValues(
+					"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.single-sign-on.url=https://simplesaml-for-spring-saml/SSOService.php",
+					"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.single-sign-on.sign-request=false",
+					"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.entity-id=https://simplesaml-for-spring-saml.cfapps.io/saml2/idp/metadata.php",
+					"spring.security.saml2.relyingparty.registration.simplesamlphp.assertingparty.verification.credentials[0].certificate-location=classpath:saml/certificate-location")
+			.run((context) -> assertThat(context).doesNotHaveBean(ManagementWebSecurityAutoConfiguration.class)
+				.doesNotHaveBean(MANAGEMENT_SECURITY_FILTER_CHAIN_BEAN));
 	}
 
 	@Test
@@ -149,9 +149,10 @@ class ManagementWebSecurityAutoConfigurationTests {
 			SecurityFilterChain testSecurityFilterChain = context.getBean("testSecurityFilterChain",
 					SecurityFilterChain.class);
 			SecurityFilterChain testRemoteDevToolsSecurityFilterChain = context
-					.getBean("testRemoteDevToolsSecurityFilterChain", SecurityFilterChain.class);
+				.getBean("testRemoteDevToolsSecurityFilterChain", SecurityFilterChain.class);
 			List<SecurityFilterChain> orderedSecurityFilterChains = context.getBeanProvider(SecurityFilterChain.class)
-					.orderedStream().toList();
+				.orderedStream()
+				.toList();
 			assertThat(orderedSecurityFilterChains).containsExactly(testRemoteDevToolsSecurityFilterChain,
 					testSecurityFilterChain);
 			assertThat(context).doesNotHaveBean(ManagementWebSecurityAutoConfiguration.class);
@@ -180,8 +181,8 @@ class ManagementWebSecurityAutoConfigurationTests {
 				requests.requestMatchers(new AntPathRequestMatcher("/foo")).permitAll();
 				requests.anyRequest().authenticated();
 			});
-			http.formLogin(Customizer.withDefaults());
-			http.httpBasic();
+			http.formLogin(withDefaults());
+			http.httpBasic(withDefaults());
 			return http.build();
 		}
 
@@ -193,7 +194,8 @@ class ManagementWebSecurityAutoConfigurationTests {
 		@Bean
 		SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
 			return http.securityMatcher("/**")
-					.authorizeHttpRequests((authorize) -> authorize.anyRequest().authenticated()).build();
+				.authorizeHttpRequests((authorize) -> authorize.anyRequest().authenticated())
+				.build();
 		}
 
 	}
@@ -205,8 +207,8 @@ class ManagementWebSecurityAutoConfigurationTests {
 		@Order(SecurityProperties.BASIC_AUTH_ORDER - 1)
 		SecurityFilterChain testRemoteDevToolsSecurityFilterChain(HttpSecurity http) throws Exception {
 			http.securityMatcher(new AntPathRequestMatcher("/**"));
-			http.authorizeHttpRequests().anyRequest().anonymous();
-			http.csrf().disable();
+			http.authorizeHttpRequests((requests) -> requests.anyRequest().anonymous());
+			http.csrf((csrf) -> csrf.disable());
 			return http.build();
 		}
 

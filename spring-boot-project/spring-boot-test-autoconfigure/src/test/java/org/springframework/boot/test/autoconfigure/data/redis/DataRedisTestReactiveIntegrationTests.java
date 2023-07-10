@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.boot.test.autoconfigure.data.redis;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -25,11 +26,10 @@ import reactor.test.StepVerifier;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.testsupport.testcontainers.RedisContainer;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.core.ReactiveRedisOperations;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
@@ -37,12 +37,16 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * Integration test for {@link DataRedisTest @DataRedisTest} using reactive operations.
  *
  * @author Stephane Nicoll
+ * @author Moritz Halbritter
+ * @author Andy Wilkinson
+ * @author Phillip Webb
  */
 @Testcontainers(disabledWithoutDocker = true)
 @DataRedisTest
 class DataRedisTestReactiveIntegrationTests {
 
 	@Container
+	@ServiceConnection
 	static RedisContainer redis = new RedisContainer();
 
 	@Autowired
@@ -51,26 +55,27 @@ class DataRedisTestReactiveIntegrationTests {
 	@Autowired
 	private ApplicationContext applicationContext;
 
-	@DynamicPropertySource
-	static void redisProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.data.redis.host", redis::getHost);
-		registry.add("spring.data.redis.port", redis::getFirstMappedPort);
-	}
-
 	@Test
 	void testRepository() {
 		String id = UUID.randomUUID().toString();
-		StepVerifier.create(this.operations.opsForValue().set(id, "Hello World")).expectNext(Boolean.TRUE)
-				.verifyComplete();
-		StepVerifier.create(this.operations.opsForValue().get(id)).expectNext("Hello World").verifyComplete();
-		StepVerifier.create(this.operations.execute((action) -> action.serverCommands().flushDb())).expectNext("OK")
-				.verifyComplete();
+		StepVerifier.create(this.operations.opsForValue().set(id, "Hello World"))
+			.expectNext(Boolean.TRUE)
+			.expectComplete()
+			.verify(Duration.ofSeconds(30));
+		StepVerifier.create(this.operations.opsForValue().get(id))
+			.expectNext("Hello World")
+			.expectComplete()
+			.verify(Duration.ofSeconds(30));
+		StepVerifier.create(this.operations.execute((action) -> action.serverCommands().flushDb()))
+			.expectNext("OK")
+			.expectComplete()
+			.verify(Duration.ofSeconds(30));
 	}
 
 	@Test
 	void didNotInjectExampleService() {
 		assertThatExceptionOfType(NoSuchBeanDefinitionException.class)
-				.isThrownBy(() -> this.applicationContext.getBean(ExampleService.class));
+			.isThrownBy(() -> this.applicationContext.getBean(ExampleService.class));
 	}
 
 }

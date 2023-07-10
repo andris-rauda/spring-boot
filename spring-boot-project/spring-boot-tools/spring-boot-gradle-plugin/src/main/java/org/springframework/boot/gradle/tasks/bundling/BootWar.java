@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,21 @@
 package org.springframework.boot.gradle.tasks.bundling;
 
 import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import org.gradle.api.Action;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ResolvableDependencies;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileCopyDetails;
 import org.gradle.api.file.FileTreeElement;
 import org.gradle.api.internal.file.copy.CopyAction;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Classpath;
-import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.bundling.War;
@@ -61,9 +62,13 @@ public abstract class BootWar extends War implements BootArchive {
 
 	private final BootArchiveSupport support;
 
-	private final ResolvedDependencies resolvedDependencies = new ResolvedDependencies();
-
 	private final LayeredSpec layered;
+
+	private final Provider<String> projectName;
+
+	private final Provider<Object> projectVersion;
+
+	private final ResolvedDependencies resolvedDependencies;
 
 	private FileCollection providedClasspath;
 
@@ -77,14 +82,9 @@ public abstract class BootWar extends War implements BootArchive {
 		getWebInf().into("lib-provided", fromCallTo(this::getProvidedLibFiles));
 		this.support.moveModuleInfoToRoot(getRootSpec());
 		getRootSpec().eachFile(this.support::excludeNonZipLibraryFiles);
-		project.getConfigurations().all((configuration) -> {
-			ResolvableDependencies incoming = configuration.getIncoming();
-			incoming.afterResolve((resolvableDependencies) -> {
-				if (resolvableDependencies == incoming) {
-					this.resolvedDependencies.processConfiguration(project, configuration);
-				}
-			});
-		});
+		this.projectName = project.provider(project::getName);
+		this.projectVersion = project.provider(project::getVersion);
+		this.resolvedDependencies = new ResolvedDependencies(project);
 	}
 
 	private Object getProvidedLibFiles() {
@@ -92,10 +92,20 @@ public abstract class BootWar extends War implements BootArchive {
 	}
 
 	@Override
+	public void resolvedArtifacts(Provider<Set<ResolvedArtifactResult>> resolvedArtifacts) {
+		this.resolvedDependencies.resolvedArtifacts(resolvedArtifacts);
+	}
+
+	@Nested
+	ResolvedDependencies getResolvedDependencies() {
+		return this.resolvedDependencies;
+	}
+
+	@Override
 	public void copy() {
 		this.support.configureManifest(getManifest(), getMainClass().get(), CLASSES_DIRECTORY, LIB_DIRECTORY,
 				CLASSPATH_INDEX, (isLayeredDisabled()) ? null : LAYERS_INDEX,
-				this.getTargetJavaVersion().get().getMajorVersion());
+				this.getTargetJavaVersion().get().getMajorVersion(), this.projectName.get(), this.projectVersion.get());
 		super.copy();
 	}
 
@@ -158,7 +168,7 @@ public abstract class BootWar extends War implements BootArchive {
 	public void providedClasspath(Object... classpath) {
 		FileCollection existingClasspath = this.providedClasspath;
 		this.providedClasspath = getProject()
-				.files((existingClasspath != null) ? existingClasspath : Collections.emptyList(), classpath);
+			.files((existingClasspath != null) ? existingClasspath : Collections.emptyList(), classpath);
 	}
 
 	/**
@@ -231,11 +241,6 @@ public abstract class BootWar extends War implements BootArchive {
 			this.support.setLaunchScript(launchScript);
 		}
 		return launchScript;
-	}
-
-	@Internal
-	ResolvedDependencies getResolvedDependencies() {
-		return this.resolvedDependencies;
 	}
 
 	/**

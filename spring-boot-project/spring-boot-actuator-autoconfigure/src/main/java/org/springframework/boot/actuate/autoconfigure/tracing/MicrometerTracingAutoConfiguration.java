@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import org.springframework.core.annotation.Order;
  */
 @AutoConfiguration
 @ConditionalOnClass(Tracer.class)
-@ConditionalOnEnabledTracing
 public class MicrometerTracingAutoConfiguration {
 
 	/**
@@ -62,6 +61,7 @@ public class MicrometerTracingAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean
 	@ConditionalOnBean(Tracer.class)
+	@Order(DEFAULT_TRACING_OBSERVATION_HANDLER_ORDER)
 	public DefaultTracingObservationHandler defaultTracingObservationHandler(Tracer tracer) {
 		return new DefaultTracingObservationHandler(tracer);
 	}

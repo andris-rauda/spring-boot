@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.GenericContainer;
@@ -33,6 +34,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import org.springframework.boot.system.JavaVersion;
+import org.springframework.boot.testsupport.junit.DisabledOnOs;
 import org.springframework.boot.testsupport.testcontainers.DisabledIfDockerUnavailable;
 import org.springframework.util.Assert;
 
@@ -42,8 +44,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Integration tests loader that supports fat jars.
  *
  * @author Phillip Webb
+ * @author Moritz Halbritter
  */
 @DisabledIfDockerUnavailable
+@DisabledOnOs(os = { OS.LINUX, OS.MAC }, architecture = "aarch64",
+		disabledReason = "Not all docker images have ARM support")
 class LoaderIntegrationTests {
 
 	private final ToStringConsumer output = new ToStringConsumer();
@@ -54,16 +59,19 @@ class LoaderIntegrationTests {
 		try (GenericContainer<?> container = createContainer(javaRuntime)) {
 			container.start();
 			System.out.println(this.output.toUtf8String());
-			assertThat(this.output.toUtf8String()).contains(">>>>> 287649 BYTES from").doesNotContain("WARNING:")
-					.doesNotContain("illegal").doesNotContain("jar written to temp");
+			assertThat(this.output.toUtf8String()).contains(">>>>> 287649 BYTES from")
+				.doesNotContain("WARNING:")
+				.doesNotContain("illegal")
+				.doesNotContain("jar written to temp");
 		}
 	}
 
 	private GenericContainer<?> createContainer(JavaRuntime javaRuntime) {
-		return javaRuntime.getContainer().withLogConsumer(this.output)
-				.withCopyFileToContainer(MountableFile.forHostPath(findApplication().toPath()), "/app.jar")
-				.withStartupCheckStrategy(new OneShotStartupCheckStrategy().withTimeout(Duration.ofMinutes(5)))
-				.withCommand("java", "-jar", "app.jar");
+		return javaRuntime.getContainer()
+			.withLogConsumer(this.output)
+			.withCopyFileToContainer(MountableFile.forHostPath(findApplication().toPath()), "/app.jar")
+			.withStartupCheckStrategy(new OneShotStartupCheckStrategy().withTimeout(Duration.ofMinutes(5)))
+			.withCommand("java", "-jar", "app.jar");
 	}
 
 	private File findApplication() {
@@ -76,8 +84,9 @@ class LoaderIntegrationTests {
 	static Stream<JavaRuntime> javaRuntimes() {
 		List<JavaRuntime> javaRuntimes = new ArrayList<>();
 		javaRuntimes.add(JavaRuntime.openJdk(JavaVersion.SEVENTEEN));
-		javaRuntimes.add(JavaRuntime.openJdk(JavaVersion.NINETEEN));
+		javaRuntimes.add(JavaRuntime.openJdk(JavaVersion.TWENTY));
 		javaRuntimes.add(JavaRuntime.oracleJdk17());
+		javaRuntimes.add(JavaRuntime.openJdkEarlyAccess(JavaVersion.TWENTY_ONE));
 		return javaRuntimes.stream().filter(JavaRuntime::isCompatible);
 	}
 
@@ -108,6 +117,13 @@ class LoaderIntegrationTests {
 			return this.name;
 		}
 
+		static JavaRuntime openJdkEarlyAccess(JavaVersion version) {
+			String imageVersion = version.toString();
+			DockerImageName image = DockerImageName.parse("openjdk:%s-ea-jdk".formatted(imageVersion));
+			return new JavaRuntime("OpenJDK Early Access " + imageVersion, version,
+					() -> new GenericContainer<>(image));
+		}
+
 		static JavaRuntime openJdk(JavaVersion version) {
 			String imageVersion = version.toString();
 			DockerImageName image = DockerImageName.parse("bellsoft/liberica-openjdk-debian:" + imageVersion);
@@ -116,7 +132,7 @@ class LoaderIntegrationTests {
 
 		static JavaRuntime oracleJdk17() {
 			ImageFromDockerfile image = new ImageFromDockerfile("spring-boot-loader/oracle-jdk-17")
-					.withFileFromFile("Dockerfile", new File("src/intTest/resources/conf/oracle-jdk-17/Dockerfile"));
+				.withFileFromFile("Dockerfile", new File("src/intTest/resources/conf/oracle-jdk-17/Dockerfile"));
 			return new JavaRuntime("Oracle JDK 17", JavaVersion.SEVENTEEN, () -> new GenericContainer<>(image));
 		}
 

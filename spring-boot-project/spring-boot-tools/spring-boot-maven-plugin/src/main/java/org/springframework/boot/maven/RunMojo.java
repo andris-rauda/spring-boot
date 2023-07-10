@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,13 @@ public class RunMojo extends AbstractRunMojo {
 	@Parameter(property = "spring-boot.run.optimizedLaunch", defaultValue = "true")
 	private boolean optimizedLaunch;
 
+	/**
+	 * Flag to include the test classpath when running.
+	 * @since 1.3.0
+	 */
+	@Parameter(property = "spring-boot.run.useTestClasspath", defaultValue = "false")
+	private Boolean useTestClasspath;
+
 	@Override
 	protected RunArguments resolveJvmArguments() {
 		RunArguments jvmArguments = super.resolveJvmArguments();
@@ -63,9 +70,15 @@ public class RunMojo extends AbstractRunMojo {
 	@Override
 	protected void run(JavaProcessExecutor processExecutor, File workingDirectory, List<String> args,
 			Map<String, String> environmentVariables) throws MojoExecutionException, MojoFailureException {
-		processExecutor.withRunProcessCustomizer(
-				(runProcess) -> Runtime.getRuntime().addShutdownHook(new Thread(new RunProcessKiller(runProcess))))
-				.run(workingDirectory, args, environmentVariables);
+		processExecutor
+			.withRunProcessCustomizer(
+					(runProcess) -> Runtime.getRuntime().addShutdownHook(new Thread(new RunProcessKiller(runProcess))))
+			.run(workingDirectory, args, environmentVariables);
+	}
+
+	@Override
+	protected boolean isUseTestClasspath() {
+		return this.useTestClasspath;
 	}
 
 	private static final class RunProcessKiller implements Runnable {

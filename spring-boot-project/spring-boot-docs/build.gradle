@@ -17,6 +17,17 @@ configurations {
 	remoteSpringApplicationExample
 	springApplicationExample
 	testSlices
+	asciidoctorExtensions {
+		resolutionStrategy {
+			eachDependency { dependency ->
+				// Downgrade SnakeYAML as Asciidoctor fails due to an incompatibility
+				// in the Pysch gem
+				if (dependency.requested.group.equals("org.yaml")) {
+					dependency.useVersion("1.33")
+				}
+			}
+		}
+	}
 }
 
 jar {
@@ -49,15 +60,18 @@ dependencies {
 	asciidoctorExtensions(project(path: ":spring-boot-project:spring-boot-actuator-autoconfigure"))
 	asciidoctorExtensions(project(path: ":spring-boot-project:spring-boot-autoconfigure"))
 	asciidoctorExtensions(project(path: ":spring-boot-project:spring-boot-devtools"))
+	asciidoctorExtensions(project(path: ":spring-boot-project:spring-boot-docker-compose"))
 
 	autoConfiguration(project(path: ":spring-boot-project:spring-boot-autoconfigure", configuration: "autoConfigurationMetadata"))
 	autoConfiguration(project(path: ":spring-boot-project:spring-boot-actuator-autoconfigure", configuration: "autoConfigurationMetadata"))
 	autoConfiguration(project(path: ":spring-boot-project:spring-boot-devtools", configuration: "autoConfigurationMetadata"))
+	autoConfiguration(project(path: ":spring-boot-project:spring-boot-testcontainers", configuration: "autoConfigurationMetadata"))
 
 	configurationProperties(project(path: ":spring-boot-project:spring-boot", configuration: "configurationPropertiesMetadata"))
 	configurationProperties(project(path: ":spring-boot-project:spring-boot-actuator", configuration: "configurationPropertiesMetadata"))
 	configurationProperties(project(path: ":spring-boot-project:spring-boot-actuator-autoconfigure", configuration: "configurationPropertiesMetadata"))
 	configurationProperties(project(path: ":spring-boot-project:spring-boot-autoconfigure", configuration: "configurationPropertiesMetadata"))
+	configurationProperties(project(path: ":spring-boot-project:spring-boot-docker-compose", configuration: "configurationPropertiesMetadata"))
 	configurationProperties(project(path: ":spring-boot-project:spring-boot-devtools", configuration: "configurationPropertiesMetadata"))
 	configurationProperties(project(path: ":spring-boot-project:spring-boot-test-autoconfigure", configuration: "configurationPropertiesMetadata"))
 
@@ -66,13 +80,17 @@ dependencies {
 	implementation(project(path: ":spring-boot-project:spring-boot-actuator"))
 	implementation(project(path: ":spring-boot-project:spring-boot-actuator-autoconfigure"))
 	implementation(project(path: ":spring-boot-project:spring-boot-autoconfigure"))
+	implementation(project(path: ":spring-boot-project:spring-boot-docker-compose"))
 	implementation(project(path: ":spring-boot-project:spring-boot-tools:spring-boot-cli"))
 	implementation(project(path: ":spring-boot-project:spring-boot-tools:spring-boot-loader-tools"))
 	implementation(project(path: ":spring-boot-project:spring-boot-test"))
 	implementation(project(path: ":spring-boot-project:spring-boot-test-autoconfigure"))
+	implementation(project(path: ":spring-boot-project:spring-boot-testcontainers"))
+	implementation(project(path: ":spring-boot-project:spring-boot-devtools"))
 	implementation("ch.qos.logback:logback-classic")
 	implementation("com.zaxxer:HikariCP")
 	implementation("io.micrometer:micrometer-core")
+	implementation("io.micrometer:micrometer-tracing")
 	implementation("io.micrometer:micrometer-registry-graphite")
 	implementation("io.micrometer:micrometer-registry-jmx")
 	implementation("io.projectreactor.netty:reactor-netty-http")
@@ -145,9 +163,7 @@ dependencies {
 	implementation("org.springframework.graphql:spring-graphql-test")
 	implementation("org.springframework.kafka:spring-kafka")
 	implementation("org.springframework.kafka:spring-kafka-test")
-	implementation("org.springframework.restdocs:spring-restdocs-mockmvc") {
-		exclude group: "javax.servlet", module: "javax.servlet-api"
-	}
+	implementation("org.springframework.restdocs:spring-restdocs-mockmvc")
 	implementation("org.springframework.restdocs:spring-restdocs-restassured")
 	implementation("org.springframework.restdocs:spring-restdocs-webtestclient")
 	implementation("org.springframework.security:spring-security-config")
@@ -158,6 +174,7 @@ dependencies {
 	implementation("org.springframework.ws:spring-ws-test")
 	implementation("org.testcontainers:junit-jupiter")
 	implementation("org.testcontainers:neo4j")
+	implementation("org.testcontainers:mongodb")
 	implementation("org.junit.jupiter:junit-jupiter")
 	implementation("org.yaml:snakeyaml")
 
@@ -277,17 +294,18 @@ task runSpringApplicationExample(type: org.springframework.boot.build.docs.Appli
 task runLoggingFormatExample(type: org.springframework.boot.build.docs.ApplicationRunner) {
 	classpath = configurations.springApplicationExample + sourceSets.main.output
 	mainClass = "org.springframework.boot.docs.features.springapplication.MyApplication"
-	args = ["--spring.main.banner-mode=off", "--server.port=0"]
+	args = ["--spring.main.banner-mode=off", "--server.port=0", "--spring.application.name=myapp"]
 	output = file("$buildDir/example-output/logging-format.txt")
 	expectedLogging = "Started MyApplication in "
 	normalizeTomcatPort()
 }
 
 tasks.withType(org.asciidoctor.gradle.jvm.AbstractAsciidoctorTask) {
+	outputs.doNotCacheIf("This task uses log files as inputs which contain changing data (timestamp, pid)") { true }
 	dependsOn dependencyVersions
-	inputs.files(runRemoteSpringApplicationExample).withPathSensitivity(PathSensitivity.RELATIVE)
-	inputs.files(runSpringApplicationExample).withPathSensitivity(PathSensitivity.RELATIVE)
-	inputs.files(runLoggingFormatExample).withPathSensitivity(PathSensitivity.RELATIVE)
+	inputs.files(runRemoteSpringApplicationExample).withPropertyName("runRemoteSpringApplicationExample").withPathSensitivity(PathSensitivity.RELATIVE)
+	inputs.files(runSpringApplicationExample).withPropertyName("runSpringApplicationExample").withPathSensitivity(PathSensitivity.RELATIVE)
+	inputs.files(runLoggingFormatExample).withPropertyName("runLoggingFormatExample").withPathSensitivity(PathSensitivity.RELATIVE)
 	asciidoctorj {
 		fatalWarnings = ['^((?!successfully validated).)*$']
 	}
@@ -319,6 +337,7 @@ tasks.withType(org.asciidoctor.gradle.jvm.AbstractAsciidoctorTask) {
 					"spring-integration-version": versionConstraints["org.springframework.integration:spring-integration-core"],
 					"spring-kafka-version": versionConstraints["org.springframework.kafka:spring-kafka"],
 					"spring-security-version": securityVersion,
+					"spring-authorization-server-version": versionConstraints["org.springframework.security:spring-security-oauth2-authorization-server"],
 					"spring-webservices-version": versionConstraints["org.springframework.ws:spring-ws-core"],
 					"tomcat-version": tomcatVersion.split("\\.").take(2).join('.'),
 					"remote-spring-application-output": runRemoteSpringApplicationExample.outputs.files.singleFile,

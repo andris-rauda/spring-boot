@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
@@ -88,6 +89,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.util.function.ThrowingConsumer;
 import org.springframework.util.function.ThrowingSupplier;
 
 /**
@@ -276,13 +278,15 @@ public class SpringApplication {
 	}
 
 	private Class<?> deduceMainApplicationClass() {
-		return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE).walk(this::findMainClass)
-				.orElse(null);
+		return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+			.walk(this::findMainClass)
+			.orElse(null);
 	}
 
 	private Optional<Class<?>> findMainClass(Stream<StackFrame> stack) {
-		return stack.filter((frame) -> Objects.equals(frame.getMethodName(), "main")).findFirst()
-				.map(StackWalker.StackFrame::getDeclaringClass);
+		return stack.filter((frame) -> Objects.equals(frame.getMethodName(), "main"))
+			.findFirst()
+			.map(StackWalker.StackFrame::getDeclaringClass);
 	}
 
 	/**
@@ -364,7 +368,7 @@ public class SpringApplication {
 
 	private Class<? extends ConfigurableEnvironment> deduceEnvironmentClass() {
 		Class<? extends ConfigurableEnvironment> environmentType = this.applicationContextFactory
-				.getEnvironmentType(this.webApplicationType);
+			.getEnvironmentType(this.webApplicationType);
 		if (environmentType == null && this.applicationContextFactory != ApplicationContextFactory.DEFAULT) {
 			environmentType = ApplicationContextFactory.DEFAULT.getEnvironmentType(this.webApplicationType);
 		}
@@ -506,8 +510,8 @@ public class SpringApplication {
 			if (sources.contains(name)) {
 				PropertySource<?> source = sources.get(name);
 				CompositePropertySource composite = new CompositePropertySource(name);
-				composite.addPropertySource(
-						new SimpleCommandLinePropertySource("springApplicationCommandLineArgs", args));
+				composite
+					.addPropertySource(new SimpleCommandLinePropertySource("springApplicationCommandLineArgs", args));
 				composite.addPropertySource(source);
 				sources.replace(name, composite);
 			}
@@ -572,8 +576,8 @@ public class SpringApplication {
 	 */
 	protected void postProcessApplicationContext(ConfigurableApplicationContext context) {
 		if (this.beanNameGenerator != null) {
-			context.getBeanFactory().registerSingleton(AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR,
-					this.beanNameGenerator);
+			context.getBeanFactory()
+				.registerSingleton(AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR, this.beanNameGenerator);
 		}
 		if (this.resourceLoader != null) {
 			if (context instanceof GenericApplicationContext genericApplicationContext) {
@@ -1356,6 +1360,22 @@ public class SpringApplication {
 	}
 
 	/**
+	 * Create an application from an existing {@code main} method that can run with
+	 * additional {@code @Configuration} or bean classes. This method can be helpful when
+	 * writing a test harness that needs to start an application with additional
+	 * configuration.
+	 * @param main the main method entry point that runs the {@link SpringApplication}
+	 * @return a {@link SpringApplication.Augmented} instance that can be used to add
+	 * configuration and run the application
+	 * @since 3.1.0
+	 * @see #withHook(SpringApplicationHook, Runnable)
+	 */
+	public static SpringApplication.Augmented from(ThrowingConsumer<String[]> main) {
+		Assert.notNull(main, "Main must not be null");
+		return new Augmented(main, Collections.emptySet());
+	}
+
+	/**
 	 * Perform the given action with the given {@link SpringApplicationHook} attached if
 	 * the action triggers an {@link SpringApplication#run(String...) application run}.
 	 * @param hook the hook to apply
@@ -1400,6 +1420,95 @@ public class SpringApplication {
 		List<E> list = new ArrayList<>(elements);
 		list.sort(AnnotationAwareOrderComparator.INSTANCE);
 		return new LinkedHashSet<>(list);
+	}
+
+	/**
+	 * Used to configure and run an augmented {@link SpringApplication} where additional
+	 * configuration should be applied.
+	 *
+	 * @since 3.1.0
+	 */
+	public static class Augmented {
+
+		private final ThrowingConsumer<String[]> main;
+
+		private final Set<Class<?>> sources;
+
+		Augmented(ThrowingConsumer<String[]> main, Set<Class<?>> sources) {
+			this.main = main;
+			this.sources = Set.copyOf(sources);
+		}
+
+		/**
+		 * Return a new {@link SpringApplication.Augmented} instance with additional
+		 * sources that should be applied when the application runs.
+		 * @param sources the sources that should be applied
+		 * @return a new {@link SpringApplication.Augmented} instance
+		 */
+		public Augmented with(Class<?>... sources) {
+			LinkedHashSet<Class<?>> merged = new LinkedHashSet<>(this.sources);
+			merged.addAll(Arrays.asList(sources));
+			return new Augmented(this.main, merged);
+		}
+
+		/**
+		 * Run the application using the given args.
+		 * @param args the main method args
+		 * @return the running {@link ApplicationContext}
+		 */
+		public SpringApplication.Running run(String... args) {
+			RunListener runListener = new RunListener();
+			SpringApplicationHook hook = new SingleUseSpringApplicationHook((springApplication) -> {
+				springApplication.addPrimarySources(this.sources);
+				return runListener;
+			});
+			withHook(hook, () -> this.main.accept(args));
+			return runListener;
+		}
+
+		/**
+		 * {@link SpringApplicationRunListener} to capture {@link Running} application
+		 * details.
+		 */
+		private static class RunListener implements SpringApplicationRunListener, Running {
+
+			private final List<ConfigurableApplicationContext> contexts = Collections
+				.synchronizedList(new ArrayList<>());
+
+			@Override
+			public void contextLoaded(ConfigurableApplicationContext context) {
+				this.contexts.add(context);
+			}
+
+			@Override
+			public ConfigurableApplicationContext getApplicationContext() {
+				List<ConfigurableApplicationContext> rootContexts = this.contexts.stream()
+					.filter((context) -> context.getParent() == null)
+					.toList();
+				Assert.state(!rootContexts.isEmpty(), "No root application context located");
+				Assert.state(rootContexts.size() == 1, "No unique root application context located");
+				return rootContexts.get(0);
+			}
+
+		}
+
+	}
+
+	/**
+	 * Provides access to details of a {@link SpringApplication} run using
+	 * {@link Augmented#run(String...)}.
+	 *
+	 * @since 3.1.0
+	 */
+	public interface Running {
+
+		/**
+		 * Return the root {@link ConfigurableApplicationContext} of the running
+		 * application.
+		 * @return the root application context
+		 */
+		ConfigurableApplicationContext getApplicationContext();
+
 	}
 
 	/**
@@ -1468,6 +1577,23 @@ public class SpringApplication {
 		 */
 		public ConfigurableApplicationContext getApplicationContext() {
 			return this.applicationContext;
+		}
+
+	}
+
+	private static final class SingleUseSpringApplicationHook implements SpringApplicationHook {
+
+		private final AtomicBoolean used = new AtomicBoolean();
+
+		private final SpringApplicationHook delegate;
+
+		private SingleUseSpringApplicationHook(SpringApplicationHook delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public SpringApplicationRunListener getRunListener(SpringApplication springApplication) {
+			return this.used.compareAndSet(false, true) ? this.delegate.getRunListener(springApplication) : null;
 		}
 
 	}

@@ -48,9 +48,7 @@ dependencies {
 	optional("org.springframework.data:spring-data-r2dbc")
 	optional("org.springframework.data:spring-data-redis")
 	optional("org.springframework.graphql:spring-graphql-test")
-	optional("org.springframework.restdocs:spring-restdocs-mockmvc") {
-		exclude group: "javax.servlet", module: "javax.servlet-api"
-	}
+	optional("org.springframework.restdocs:spring-restdocs-mockmvc")
 	optional("org.springframework.restdocs:spring-restdocs-restassured")
 	optional("org.springframework.restdocs:spring-restdocs-webtestclient")
 	optional("org.springframework.security:spring-security-config")
@@ -65,6 +63,7 @@ dependencies {
 	testImplementation(project(":spring-boot-project:spring-boot-actuator"))
 	testImplementation(project(":spring-boot-project:spring-boot-actuator-autoconfigure"))
 	testImplementation(project(":spring-boot-project:spring-boot-tools:spring-boot-test-support"))
+	testImplementation(project(":spring-boot-project:spring-boot-testcontainers"))
 	testImplementation("ch.qos.logback:logback-classic")
 	testImplementation("com.fasterxml.jackson.module:jackson-module-parameter-names")
 	testImplementation("com.h2database:h2")

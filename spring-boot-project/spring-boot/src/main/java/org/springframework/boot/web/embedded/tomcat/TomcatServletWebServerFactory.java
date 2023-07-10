@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,6 +71,7 @@ import org.springframework.boot.util.LambdaSafe;
 import org.springframework.boot.web.server.Cookie.SameSite;
 import org.springframework.boot.web.server.ErrorPage;
 import org.springframework.boot.web.server.MimeMappings;
+import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.server.AbstractServletWebServerFactory;
@@ -310,8 +311,9 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	private void addJasperInitializer(TomcatEmbeddedContext context) {
 		try {
 			ServletContainerInitializer initializer = (ServletContainerInitializer) ClassUtils
-					.forName("org.apache.jasper.servlet.JasperInitializer", null).getDeclaredConstructor()
-					.newInstance();
+				.forName("org.apache.jasper.servlet.JasperInitializer", null)
+				.getDeclaredConstructor()
+				.newInstance();
 			context.addServletContainerInitializer(initializer, null);
 		}
 		catch (Exception ex) {
@@ -338,7 +340,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		if (getHttp2() != null && getHttp2().isEnabled()) {
 			connector.addUpgradeProtocol(new Http2Protocol());
 		}
-		if (getSsl() != null && getSsl().isEnabled()) {
+		if (Ssl.isEnabled(getSsl())) {
 			customizeSsl(connector);
 		}
 		TomcatConnectorCustomizer compression = new CompressionConnectorCustomizer(getCompression());
@@ -356,12 +358,13 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 
 	@SuppressWarnings("unchecked")
 	private void invokeProtocolHandlerCustomizers(ProtocolHandler protocolHandler) {
-		LambdaSafe.callbacks(TomcatProtocolHandlerCustomizer.class, this.tomcatProtocolHandlerCustomizers,
-				protocolHandler).invoke((customizer) -> customizer.customize(protocolHandler));
+		LambdaSafe
+			.callbacks(TomcatProtocolHandlerCustomizer.class, this.tomcatProtocolHandlerCustomizers, protocolHandler)
+			.invoke((customizer) -> customizer.customize(protocolHandler));
 	}
 
 	private void customizeSsl(Connector connector) {
-		new SslConnectorCustomizer(getSsl(), getOrCreateSslStoreProvider()).customize(connector);
+		new SslConnectorCustomizer(getSsl().getClientAuth(), getSslBundle()).customize(connector);
 	}
 
 	/**
@@ -436,7 +439,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		List<CookieSameSiteSupplier> suppliers = new ArrayList<>();
 		if (sessionSameSite != null) {
 			suppliers.add(CookieSameSiteSupplier.of(sessionSameSite)
-					.whenHasName(() -> SessionConfig.getSessionCookieName(context)));
+				.whenHasName(() -> SessionConfig.getSessionCookieName(context)));
 		}
 		if (!CollectionUtils.isEmpty(getCookieSameSiteSuppliers())) {
 			suppliers.addAll(getCookieSameSiteSuppliers());
@@ -867,9 +870,10 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 
 		@Override
 		public Set<String> listWebAppPaths(String path) {
-			return this.delegate.listWebAppPaths(path).stream()
-					.filter((webAppPath) -> !webAppPath.startsWith("/org/springframework/boot"))
-					.collect(Collectors.toSet());
+			return this.delegate.listWebAppPaths(path)
+				.stream()
+				.filter((webAppPath) -> !webAppPath.startsWith("/org/springframework/boot"))
+				.collect(Collectors.toSet());
 		}
 
 		@Override

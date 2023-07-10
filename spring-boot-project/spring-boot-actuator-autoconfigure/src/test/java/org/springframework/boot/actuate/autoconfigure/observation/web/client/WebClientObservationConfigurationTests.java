@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.boot.actuate.autoconfigure.metrics.test.MetricsRun;
 import org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration;
-import org.springframework.boot.actuate.metrics.web.reactive.client.DefaultWebClientExchangeTagsProvider;
 import org.springframework.boot.actuate.metrics.web.reactive.client.ObservationWebClientCustomizer;
-import org.springframework.boot.actuate.metrics.web.reactive.client.WebClientExchangeTagsProvider;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
@@ -59,18 +57,16 @@ import static org.mockito.Mockito.mock;
  * @author Stephane Nicoll
  */
 @ExtendWith(OutputCaptureExtension.class)
-@SuppressWarnings("removal")
 class WebClientObservationConfigurationTests {
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner().with(MetricsRun.simple())
-			.withBean(ObservationRegistry.class, TestObservationRegistry::create)
-			.withConfiguration(AutoConfigurations.of(ObservationAutoConfiguration.class,
-					WebClientAutoConfiguration.class, HttpClientObservationsAutoConfiguration.class));
+		.withBean(ObservationRegistry.class, TestObservationRegistry::create)
+		.withConfiguration(AutoConfigurations.of(ObservationAutoConfiguration.class, WebClientAutoConfiguration.class,
+				HttpClientObservationsAutoConfiguration.class));
 
 	@Test
 	void contributesCustomizerBean() {
-		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(ObservationWebClientCustomizer.class)
-				.doesNotHaveBean(DefaultWebClientExchangeTagsProvider.class));
+		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(ObservationWebClientCustomizer.class));
 	}
 
 	@Test
@@ -83,22 +79,21 @@ class WebClientObservationConfigurationTests {
 	}
 
 	@Test
-	void shouldNotOverrideCustomTagsProvider() {
-		this.contextRunner.withUserConfiguration(CustomTagsProviderConfig.class).run((context) -> assertThat(context)
-				.getBeans(WebClientExchangeTagsProvider.class).hasSize(1).containsKey("customTagsProvider"));
-	}
-
-	@Test
 	void shouldUseCustomConventionIfAvailable() {
 		this.contextRunner.withUserConfiguration(CustomConvention.class).run((context) -> {
 			TestObservationRegistry registry = context.getBean(TestObservationRegistry.class);
 			WebClient.Builder builder = context.getBean(WebClient.Builder.class);
 			WebClient webClient = mockWebClient(builder);
 			TestObservationRegistryAssert.assertThat(registry).doesNotHaveAnyObservation();
-			webClient.get().uri("https://example.org/projects/{project}", "spring-boot").retrieve().toBodilessEntity()
-					.block(Duration.ofSeconds(30));
-			TestObservationRegistryAssert.assertThat(registry).hasObservationWithNameEqualTo("http.client.requests")
-					.that().hasLowCardinalityKeyValue("project", "spring-boot");
+			webClient.get()
+				.uri("https://example.org/projects/{project}", "spring-boot")
+				.retrieve()
+				.toBodilessEntity()
+				.block(Duration.ofSeconds(30));
+			TestObservationRegistryAssert.assertThat(registry)
+				.hasObservationWithNameEqualTo("http.client.requests")
+				.that()
+				.hasLowCardinalityKeyValue("project", "spring-boot");
 		});
 	}
 
@@ -107,13 +102,13 @@ class WebClientObservationConfigurationTests {
 		this.contextRunner.withPropertyValues("management.metrics.web.client.max-uri-tags=2").run((context) -> {
 			TestObservationRegistry registry = getInitializedRegistry(context);
 			TestObservationRegistryAssert.assertThat(registry)
-					.hasNumberOfObservationsWithNameEqualTo("http.client.requests", 3);
+				.hasNumberOfObservationsWithNameEqualTo("http.client.requests", 3);
 			MeterRegistry meterRegistry = context.getBean(MeterRegistry.class);
 			assertThat(meterRegistry.find("http.client.requests").timers()).hasSize(1);
 			// MeterFilter.maximumAllowableTags() works with prefix matching.
 			assertThat(meterRegistry.find("http.client.requests.active").longTaskTimers()).hasSize(1);
 			assertThat(output).contains("Reached the maximum number of URI tags for 'http.client.requests'.")
-					.contains("Are you using 'uriVariables'?");
+				.contains("Are you using 'uriVariables'?");
 		});
 	}
 
@@ -122,11 +117,11 @@ class WebClientObservationConfigurationTests {
 		this.contextRunner.withPropertyValues("management.metrics.web.client.max-uri-tags=5").run((context) -> {
 			TestObservationRegistry registry = getInitializedRegistry(context);
 			TestObservationRegistryAssert.assertThat(registry)
-					.hasNumberOfObservationsWithNameEqualTo("http.client.requests", 3);
+				.hasNumberOfObservationsWithNameEqualTo("http.client.requests", 3);
 			MeterRegistry meterRegistry = context.getBean(MeterRegistry.class);
 			assertThat(meterRegistry.find("http.client.requests").timers()).hasSize(3);
 			assertThat(output).doesNotContain("Reached the maximum number of URI tags for 'http.client.requests'.")
-					.doesNotContain("Are you using 'uriVariables'?");
+				.doesNotContain("Are you using 'uriVariables'?");
 		});
 	}
 
@@ -134,8 +129,11 @@ class WebClientObservationConfigurationTests {
 		WebClient webClient = mockWebClient(context.getBean(WebClient.Builder.class));
 		TestObservationRegistry registry = context.getBean(TestObservationRegistry.class);
 		for (int i = 0; i < 3; i++) {
-			webClient.get().uri("https://example.org/projects/" + i).retrieve().toBodilessEntity()
-					.block(Duration.ofSeconds(30));
+			webClient.get()
+				.uri("https://example.org/projects/" + i)
+				.retrieve()
+				.toBodilessEntity()
+				.block(Duration.ofSeconds(30));
 		}
 		return registry;
 	}
@@ -143,26 +141,21 @@ class WebClientObservationConfigurationTests {
 	private void validateWebClient(WebClient.Builder builder, TestObservationRegistry registry) {
 		WebClient webClient = mockWebClient(builder);
 		TestObservationRegistryAssert.assertThat(registry).doesNotHaveAnyObservation();
-		webClient.get().uri("https://example.org/projects/{project}", "spring-boot").retrieve().toBodilessEntity()
-				.block(Duration.ofSeconds(30));
-		TestObservationRegistryAssert.assertThat(registry).hasObservationWithNameEqualTo("http.client.requests").that()
-				.hasLowCardinalityKeyValue("uri", "https://example.org/projects/{project}");
+		webClient.get()
+			.uri("https://example.org/projects/{project}", "spring-boot")
+			.retrieve()
+			.toBodilessEntity()
+			.block(Duration.ofSeconds(30));
+		TestObservationRegistryAssert.assertThat(registry)
+			.hasObservationWithNameEqualTo("http.client.requests")
+			.that()
+			.hasLowCardinalityKeyValue("uri", "/projects/{project}");
 	}
 
 	private WebClient mockWebClient(WebClient.Builder builder) {
 		ClientHttpConnector connector = mock(ClientHttpConnector.class);
 		given(connector.connect(any(), any(), any())).willReturn(Mono.just(new MockClientHttpResponse(HttpStatus.OK)));
 		return builder.clientConnector(connector).build();
-	}
-
-	@Configuration(proxyBeanMethods = false)
-	static class CustomTagsProviderConfig {
-
-		@Bean
-		WebClientExchangeTagsProvider customTagsProvider() {
-			return mock(WebClientExchangeTagsProvider.class);
-		}
-
 	}
 
 	@Configuration(proxyBeanMethods = false)

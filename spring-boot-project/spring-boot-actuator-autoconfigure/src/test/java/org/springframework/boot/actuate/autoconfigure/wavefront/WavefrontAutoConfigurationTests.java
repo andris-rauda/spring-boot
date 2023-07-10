@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WavefrontAutoConfigurationTests {
 
 	ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(WavefrontAutoConfiguration.class));
+		.withConfiguration(AutoConfigurations.of(WavefrontAutoConfiguration.class));
 
 	@Test
 	void wavefrontApplicationTagsWhenHasUserBeanBacksOff() {
@@ -55,12 +55,15 @@ class WavefrontAutoConfigurationTests {
 		properties.add("management.wavefront.application.service-name=test-service");
 		properties.add("management.wavefront.application.cluster-name=test-cluster");
 		properties.add("management.wavefront.application.shard-name=test-shard");
+		properties.add("management.wavefront.application.custom-tags.foo=FOO");
+		properties.add("management.wavefront.application.custom-tags.bar=BAR");
 		this.contextRunner.withPropertyValues(properties.toArray(String[]::new)).run((context) -> {
 			ApplicationTags tags = context.getBean(ApplicationTags.class);
 			assertThat(tags.getApplication()).isEqualTo("test-application");
 			assertThat(tags.getService()).isEqualTo("test-service");
 			assertThat(tags.getCluster()).isEqualTo("test-cluster");
 			assertThat(tags.getShard()).isEqualTo("test-shard");
+			assertThat(tags.getCustomTags()).hasSize(2).containsEntry("foo", "FOO").containsEntry("bar", "BAR");
 		});
 	}
 
@@ -72,6 +75,7 @@ class WavefrontAutoConfigurationTests {
 			assertThat(tags.getService()).isEqualTo("spring-app");
 			assertThat(tags.getCluster()).isNull();
 			assertThat(tags.getShard()).isNull();
+			assertThat(tags.getCustomTags()).isEmpty();
 		});
 	}
 

@@ -46,6 +46,8 @@ dependencies {
 
 	mavenRepository(project(path: ":spring-boot-project:spring-boot", configuration: "mavenRepository"))
 	mavenRepository(project(path: ":spring-boot-project:spring-boot-test", configuration: "mavenRepository"))
+	mavenRepository(project(path: ":spring-boot-project:spring-boot-devtools", configuration: "mavenRepository"))
+	mavenRepository(project(path: ":spring-boot-project:spring-boot-docker-compose", configuration: "mavenRepository"))
 
 	runtimeOnly("org.sonatype.plexus:plexus-build-api")
 
@@ -137,7 +139,7 @@ task xsdResources(type: Sync) {
 }
 
 prepareMavenBinaries {
-	versions "3.8.5", "3.6.3", "3.5.4"
+	versions "3.9.0", "3.8.5", "3.6.3"
 }
 
 artifacts {

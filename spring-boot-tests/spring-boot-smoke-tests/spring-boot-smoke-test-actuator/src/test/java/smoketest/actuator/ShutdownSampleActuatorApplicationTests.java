@@ -59,7 +59,7 @@ class ShutdownSampleActuatorApplicationTests {
 	@DirtiesContext
 	void testShutdown() {
 		ResponseEntity<Map<String, Object>> entity = asMapEntity(this.restTemplate.withBasicAuth("user", "password")
-				.postForEntity("/actuator/shutdown", null, Map.class));
+			.postForEntity("/actuator/shutdown", null, Map.class));
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(((String) entity.getBody().get("message"))).contains("Shutting down");
 	}
@@ -74,7 +74,7 @@ class ShutdownSampleActuatorApplicationTests {
 
 		@Bean
 		SecurityFilterChain configure(HttpSecurity http) throws Exception {
-			http.csrf().disable();
+			http.csrf((csrf) -> csrf.disable());
 			return http.build();
 		}
 

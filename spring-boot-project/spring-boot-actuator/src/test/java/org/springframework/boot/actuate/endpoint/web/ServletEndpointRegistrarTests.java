@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,6 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,6 +35,7 @@ import org.springframework.boot.actuate.endpoint.EndpointId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -57,13 +56,10 @@ class ServletEndpointRegistrarTests {
 	@Mock
 	private Dynamic dynamic;
 
-	@Captor
-	private ArgumentCaptor<Servlet> servlet;
-
 	@Test
 	void createWhenServletEndpointsIsNullShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new ServletEndpointRegistrar(null, null))
-				.withMessageContaining("ServletEndpoints must not be null");
+			.withMessageContaining("ServletEndpoints must not be null");
 	}
 
 	@Test
@@ -91,8 +87,9 @@ class ServletEndpointRegistrarTests {
 		ExposableServletEndpoint endpoint = mockEndpoint(new EndpointServlet(TestServlet.class));
 		ServletEndpointRegistrar registrar = new ServletEndpointRegistrar(basePath, Collections.singleton(endpoint));
 		registrar.onStartup(this.servletContext);
-		then(this.servletContext).should().addServlet(eq("test-actuator-endpoint"), this.servlet.capture());
-		assertThat(this.servlet.getValue()).isInstanceOf(TestServlet.class);
+		then(this.servletContext).should()
+			.addServlet(eq("test-actuator-endpoint"),
+					(Servlet) assertArg((servlet) -> assertThat(servlet).isInstanceOf(TestServlet.class)));
 		then(this.dynamic).should().addMapping(expectedMapping);
 	}
 

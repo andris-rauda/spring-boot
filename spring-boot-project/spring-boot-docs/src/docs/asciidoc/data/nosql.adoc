@@ -62,6 +62,27 @@ If you add your own `@Bean` of any of the auto-configured types, it replaces the
 
 By default, a pooled connection factory is auto-configured if `commons-pool2` is on the classpath.
 
+The auto-configured `RedisConnectionFactory` can be configured to use SSL for communication with the server by setting the properties as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  data:
+	    redis:
+	      ssl:
+	        enabled: true
+----
+
+Custom SSL trust material can be configured in an <<features#features.ssl,SSL bundle>> and applied to the `RedisConnectionFactory` as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  data:
+	    redis:
+	      ssl:
+	        bundle: "example"
+----
 
 
 [[data.nosql.mongodb]]
@@ -113,6 +134,31 @@ For example, you might declare the following settings in your `application.prope
 	      username: "user"
 	      password: "secret"
 ----
+
+The auto-configured `MongoClient` can be configured to use SSL for communication with the server by setting the properties as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  data:
+	    mongodb:
+	      uri: "mongodb://user:secret@mongoserver1.example.com:27017,mongoserver2.example.com:23456/test"
+	      ssl:
+	        enabled: true
+----
+
+Custom SSL trust material can be configured in an <<features#features.ssl,SSL bundle>> and applied to the `MongoClient` as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  data:
+	    mongodb:
+	      uri: "mongodb://user:secret@mongoserver1.example.com:27017,mongoserver2.example.com:23456/test"
+	      ssl:
+	        bundle: "example"
+----
+
 
 [TIP]
 ====
@@ -374,6 +420,33 @@ If the port is the same for all your contact points you can use a shortcut and o
 TIP: Those two examples are identical as the port default to `9042`.
 If you need to configure the port, use `spring.cassandra.port`.
 
+The auto-configured `CqlSession` can be configured to use SSL for communication with the server by setting the properties as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  cassandra:
+	    keyspace-name: "mykeyspace"
+	    contact-points: "cassandrahost1,cassandrahost2"
+	    local-datacenter: "datacenter1"
+	    ssl:
+	      enabled: true
+----
+
+Custom SSL trust material can be configured in an <<features#features.ssl,SSL bundle>> and applied to the `CqlSession` as shown in this example:
+
+[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
+----
+	spring:
+	  cassandra:
+	    keyspace-name: "mykeyspace"
+	    contact-points: "cassandrahost1,cassandrahost2"
+	    local-datacenter: "datacenter1"
+	    ssl:
+	      bundle: "example"
+----
+
+
 [NOTE]
 ====
 The Cassandra driver has its own configuration infrastructure that loads an `application.conf` at the root of the classpath.
@@ -428,7 +501,7 @@ Generally, you provide the https://github.com/couchbaselabs/sdk-rfcs/blob/master
 ----
 
 It is also possible to customize some of the `ClusterEnvironment` settings.
-For instance, the following configuration changes the timeout to open a new `Bucket` and enables SSL support:
+For instance, the following configuration changes the timeout to open a new `Bucket` and enables SSL support with a reference to a configured <<features#features.ssl,SSL bundle>>:
 
 [source,yaml,indent=0,subs="verbatim",configprops,configblocks]
 ----
@@ -438,8 +511,7 @@ For instance, the following configuration changes the timeout to open a new `Buc
 	      timeouts:
 	        connect: "3s"
 	      ssl:
-	        key-store: "/location/of/keystore.jks"
-	        key-store-password: "secret"
+	        bundle: "example"
 ----
 
 TIP: Check the `spring.couchbase.env.*` properties for more details.

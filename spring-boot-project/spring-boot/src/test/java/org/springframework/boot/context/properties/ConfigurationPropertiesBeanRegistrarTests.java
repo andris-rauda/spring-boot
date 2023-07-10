@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.boot.context.properties.ConfigurationPropertiesBean.BindMethod;
+import org.springframework.boot.context.properties.bind.BindMethod;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -66,8 +66,8 @@ class ConfigurationPropertiesBeanRegistrarTests {
 	@Test
 	void registerWhenNoAnnotationThrowsException() {
 		assertThatIllegalStateException()
-				.isThrownBy(() -> this.registrar.register(NoAnnotationConfigurationProperties.class))
-				.withMessageContaining("No ConfigurationProperties annotation found");
+			.isThrownBy(() -> this.registrar.register(NoAnnotationConfigurationProperties.class))
+			.withMessageContaining("No ConfigurationProperties annotation found");
 	}
 
 	@Test

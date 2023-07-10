@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfi
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.actuate.endpoint.jmx.EndpointObjectNameFactory;
-import org.springframework.boot.actuate.endpoint.jmx.ExposableJmxEndpoint;
 import org.springframework.boot.actuate.endpoint.jmx.JmxEndpointExporter;
 import org.springframework.boot.actuate.endpoint.jmx.annotation.JmxEndpointDiscoverer;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -42,6 +41,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -58,46 +58,46 @@ class JmxEndpointAutoConfigurationTests {
 	};
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(EndpointAutoConfiguration.class, JmxAutoConfiguration.class,
-					JmxEndpointAutoConfiguration.class))
-			.withUserConfiguration(TestEndpoint.class);
+		.withConfiguration(AutoConfigurations.of(EndpointAutoConfiguration.class, JmxAutoConfiguration.class,
+				JmxEndpointAutoConfiguration.class))
+		.withUserConfiguration(TestEndpoint.class);
 
 	private final MBeanServer mBeanServer = mock(MBeanServer.class);
 
 	@Test
 	void jmxEndpointWithoutJmxSupportNotAutoConfigured() {
 		this.contextRunner.run((context) -> assertThat(context).doesNotHaveBean(MBeanServer.class)
-				.doesNotHaveBean(JmxEndpointDiscoverer.class).doesNotHaveBean(JmxEndpointExporter.class));
+			.doesNotHaveBean(JmxEndpointDiscoverer.class)
+			.doesNotHaveBean(JmxEndpointExporter.class));
 	}
 
 	@Test
 	void jmxEndpointWithJmxSupportAutoConfigured() {
-		this.contextRunner.withPropertyValues("spring.jmx.enabled=true").with(mockMBeanServer())
-				.run((context) -> assertThat(context).hasSingleBean(JmxEndpointDiscoverer.class)
-						.hasSingleBean(JmxEndpointExporter.class));
+		this.contextRunner.withPropertyValues("spring.jmx.enabled=true")
+			.with(mockMBeanServer())
+			.run((context) -> assertThat(context).hasSingleBean(JmxEndpointDiscoverer.class)
+				.hasSingleBean(JmxEndpointExporter.class));
 	}
 
 	@Test
 	void jmxEndpointWithCustomEndpointObjectNameFactory() {
 		EndpointObjectNameFactory factory = mock(EndpointObjectNameFactory.class);
 		this.contextRunner
-				.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.jmx.exposure.include=test")
-				.with(mockMBeanServer()).withBean(EndpointObjectNameFactory.class, () -> factory).run((context) -> {
-					ArgumentCaptor<ExposableJmxEndpoint> argumentCaptor = ArgumentCaptor
-							.forClass(ExposableJmxEndpoint.class);
-					then(factory).should().getObjectName(argumentCaptor.capture());
-					ExposableJmxEndpoint jmxEndpoint = argumentCaptor.getValue();
-					assertThat(jmxEndpoint.getEndpointId().toLowerCaseString()).isEqualTo("test");
-				});
+			.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.jmx.exposure.include=test")
+			.with(mockMBeanServer())
+			.withBean(EndpointObjectNameFactory.class, () -> factory)
+			.run((context) -> then(factory).should()
+				.getObjectName(assertArg((jmxEndpoint) -> assertThat(jmxEndpoint.getEndpointId().toLowerCaseString())
+					.isEqualTo("test"))));
 	}
 
 	@Test
 	void jmxEndpointWithContextHierarchyGeneratesUniqueNamesForEachEndpoint() throws Exception {
 		given(this.mBeanServer.queryNames(any(), any()))
-				.willReturn(new HashSet<>(Arrays.asList(new ObjectName("test:test=test"))));
+			.willReturn(new HashSet<>(Arrays.asList(new ObjectName("test:test=test"))));
 		ArgumentCaptor<ObjectName> objectName = ArgumentCaptor.forClass(ObjectName.class);
 		ApplicationContextRunner jmxEnabledContextRunner = this.contextRunner
-				.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.jmx.exposure.include=test");
+			.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.jmx.exposure.include=test");
 		jmxEnabledContextRunner.with(mockMBeanServer()).run((parent) -> {
 			jmxEnabledContextRunner.withParent(parent).run(NO_OPERATION);
 			jmxEnabledContextRunner.withParent(parent).run(NO_OPERATION);

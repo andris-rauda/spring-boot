@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.observation.MeterObservationHandler;
 import io.micrometer.observation.GlobalObservationConvention;
 import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationFilter;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationPredicate;
 import io.micrometer.observation.ObservationRegistry;
@@ -42,6 +43,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClas
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 /**
  * {@link EnableAutoConfiguration Auto-configuration} for the Micrometer Observation API.
@@ -62,15 +64,22 @@ public class ObservationAutoConfiguration {
 			ObjectProvider<ObservationPredicate> observationPredicates,
 			ObjectProvider<GlobalObservationConvention<?>> observationConventions,
 			ObjectProvider<ObservationHandler<?>> observationHandlers,
-			ObjectProvider<ObservationHandlerGrouping> observationHandlerGrouping) {
+			ObjectProvider<ObservationHandlerGrouping> observationHandlerGrouping,
+			ObjectProvider<ObservationFilter> observationFilters) {
 		return new ObservationRegistryPostProcessor(observationRegistryCustomizers, observationPredicates,
-				observationConventions, observationHandlers, observationHandlerGrouping);
+				observationConventions, observationHandlers, observationHandlerGrouping, observationFilters);
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	ObservationRegistry observationRegistry() {
 		return ObservationRegistry.create();
+	}
+
+	@Bean
+	@Order(0)
+	PropertiesObservationFilterPredicate propertiesObservationFilter(ObservationProperties properties) {
+		return new PropertiesObservationFilterPredicate(properties);
 	}
 
 	@Configuration(proxyBeanMethods = false)

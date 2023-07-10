@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -168,8 +168,7 @@ public class JettyWebServer implements WebServer {
 					}
 				}
 				this.started = true;
-				logger.info("Jetty started on port(s) " + getActualPortsDescription() + " with context path '"
-						+ getContextPath() + "'");
+				logger.info(getStartedLogMessage());
 			}
 			catch (WebServerException ex) {
 				stopSilently();
@@ -182,15 +181,25 @@ public class JettyWebServer implements WebServer {
 		}
 	}
 
+	String getStartedLogMessage() {
+		return "Jetty started on " + getActualPortsDescription() + " with context path '" + getContextPath() + "'";
+	}
+
 	private String getActualPortsDescription() {
-		StringBuilder ports = new StringBuilder();
-		for (Connector connector : this.server.getConnectors()) {
-			if (ports.length() != 0) {
-				ports.append(", ");
-			}
-			ports.append(getLocalPort(connector)).append(getProtocols(connector));
+		StringBuilder description = new StringBuilder("port");
+		Connector[] connectors = this.server.getConnectors();
+		if (connectors.length != 1) {
+			description.append("s");
 		}
-		return ports.toString();
+		description.append(" ");
+		for (int i = 0; i < connectors.length; i++) {
+			if (i != 0) {
+				description.append(", ");
+			}
+			Connector connector = connectors[i];
+			description.append(getLocalPort(connector)).append(getProtocols(connector));
+		}
+		return description.toString();
 	}
 
 	private String getProtocols(Connector connector) {
@@ -199,8 +208,11 @@ public class JettyWebServer implements WebServer {
 	}
 
 	private String getContextPath() {
-		return Arrays.stream(this.server.getHandlers()).map(this::findContextHandler).filter(Objects::nonNull)
-				.map(ContextHandler::getContextPath).collect(Collectors.joining(" "));
+		return Arrays.stream(this.server.getHandlers())
+			.map(this::findContextHandler)
+			.filter(Objects::nonNull)
+			.map(ContextHandler::getContextPath)
+			.collect(Collectors.joining(" "));
 	}
 
 	private ContextHandler findContextHandler(Handler handler) {
@@ -235,13 +247,27 @@ public class JettyWebServer implements WebServer {
 				this.gracefulShutdown.abort();
 			}
 			try {
-				this.server.stop();
+				for (Connector connector : this.server.getConnectors()) {
+					connector.stop();
+				}
 			}
 			catch (InterruptedException ex) {
 				Thread.currentThread().interrupt();
 			}
 			catch (Exception ex) {
 				throw new WebServerException("Unable to stop embedded Jetty server", ex);
+			}
+		}
+	}
+
+	@Override
+	public void destroy() {
+		synchronized (this.monitor) {
+			try {
+				this.server.stop();
+			}
+			catch (Exception ex) {
+				throw new WebServerException("Unable to destroy embedded Jetty server", ex);
 			}
 		}
 	}

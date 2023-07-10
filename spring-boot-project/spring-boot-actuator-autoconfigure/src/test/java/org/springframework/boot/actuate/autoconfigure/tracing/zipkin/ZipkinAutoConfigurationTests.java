@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,17 +37,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ZipkinAutoConfigurationTests {
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(ZipkinAutoConfiguration.class));
+		.withConfiguration(AutoConfigurations.of(ZipkinAutoConfiguration.class));
 
 	@Test
 	void shouldSupplyBeans() {
-		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(BytesEncoder.class));
+		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(BytesEncoder.class)
+			.hasSingleBean(PropertiesZipkinConnectionDetails.class));
 	}
 
 	@Test
 	void shouldNotSupplyBeansIfZipkinReporterIsMissing() {
 		this.contextRunner.withClassLoader(new FilteredClassLoader("zipkin2.reporter"))
-				.run((context) -> assertThat(context).doesNotHaveBean(BytesEncoder.class));
+			.run((context) -> assertThat(context).doesNotHaveBean(BytesEncoder.class));
 	}
 
 	@Test
@@ -59,9 +60,30 @@ class ZipkinAutoConfigurationTests {
 	}
 
 	@Test
-	void shouldNotSupplyBeansIfTracingIsDisabled() {
-		this.contextRunner.withPropertyValues("management.tracing.enabled=false")
-				.run((context) -> assertThat(context).doesNotHaveBean(BytesEncoder.class));
+	void definesPropertiesBasedConnectionDetailsByDefault() {
+		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(PropertiesZipkinConnectionDetails.class));
+	}
+
+	@Test
+	void shouldUseCustomConnectionDetailsWhenDefined() {
+		this.contextRunner.withBean(ZipkinConnectionDetails.class, () -> new ZipkinConnectionDetails() {
+
+			@Override
+			public String getSpanEndpoint() {
+				return "http://localhost";
+			}
+
+		})
+			.run((context) -> assertThat(context).hasSingleBean(ZipkinConnectionDetails.class)
+				.doesNotHaveBean(PropertiesZipkinConnectionDetails.class));
+	}
+
+	@Test
+	void shouldWorkWithoutSenders() {
+		this.contextRunner
+			.withClassLoader(new FilteredClassLoader("zipkin2.reporter.urlconnection", "org.springframework.web.client",
+					"org.springframework.web.reactive.function.client"))
+			.run((context) -> assertThat(context).hasNotFailed());
 	}
 
 	@Configuration(proxyBeanMethods = false)

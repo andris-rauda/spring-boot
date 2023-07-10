@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.jasper.servlet.JspServlet;
 import org.awaitility.Awaitility;
+import org.eclipse.jetty.server.ConnectionLimit;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -86,6 +87,7 @@ import static org.mockito.Mockito.mock;
  * @author Dave Syer
  * @author Andy Wilkinson
  * @author Henri Kerola
+ * @author Moritz Halbritter
  */
 @Servlet5ClassPathOverrides
 class JettyServletWebServerFactoryTests extends AbstractServletWebServerFactoryTests {
@@ -232,10 +234,10 @@ class JettyServletWebServerFactoryTests extends AbstractServletWebServerFactoryT
 	}
 
 	@Test
-	void stopCalledWithoutStart() {
+	void destroyCalledWithoutStart() {
 		JettyServletWebServerFactory factory = getFactory();
 		this.webServer = factory.getWebServer(exampleServletRegistration());
-		this.webServer.stop();
+		this.webServer.destroy();
 		Server server = ((JettyWebServer) this.webServer).getServer();
 		assertThat(server.isStopped()).isTrue();
 	}
@@ -330,8 +332,9 @@ class JettyServletWebServerFactoryTests extends AbstractServletWebServerFactoryT
 		response = request.get();
 		assertThat(response).isInstanceOf(HttpResponse.class);
 		assertThat(((HttpResponse) response).getCode()).isEqualTo(200);
-		assertThat(((HttpResponse) response).getFirstHeader("Connection")).isNotNull().extracting(Header::getValue)
-				.isEqualTo("close");
+		assertThat(((HttpResponse) response).getFirstHeader("Connection")).isNotNull()
+			.extracting(Header::getValue)
+			.isEqualTo("close");
 		this.webServer.stop();
 	}
 
@@ -432,7 +435,7 @@ class JettyServletWebServerFactoryTests extends AbstractServletWebServerFactoryT
 			threadPool.setMinThreads(2);
 		});
 		assertThatExceptionOfType(WebServerException.class).isThrownBy(factory.getWebServer()::start)
-				.withCauseInstanceOf(IllegalStateException.class);
+			.withCauseInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
@@ -515,6 +518,22 @@ class JettyServletWebServerFactoryTests extends AbstractServletWebServerFactoryT
 		JettyWebServer jettyWebServer = (JettyWebServer) factory.getWebServer();
 		WebAppContext context = findWebAppContext(jettyWebServer);
 		assertThat(context.getErrorHandler()).isInstanceOf(CustomErrorHandler.class);
+	}
+
+	@Test
+	void shouldApplyMaxConnections() {
+		JettyServletWebServerFactory factory = getFactory();
+		factory.setMaxConnections(1);
+		this.webServer = factory.getWebServer();
+		Server server = ((JettyWebServer) this.webServer).getServer();
+		ConnectionLimit connectionLimit = server.getBean(ConnectionLimit.class);
+		assertThat(connectionLimit).isNotNull();
+		assertThat(connectionLimit.getMaxConnections()).isOne();
+	}
+
+	@Override
+	protected String startedLogMessage() {
+		return ((JettyWebServer) this.webServer).getStartedLogMessage();
 	}
 
 	private WebAppContext findWebAppContext(JettyWebServer webServer) {

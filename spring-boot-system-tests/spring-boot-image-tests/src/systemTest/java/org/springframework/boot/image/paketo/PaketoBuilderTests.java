@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ import static org.assertj.core.api.Assertions.entry;
  * @author Scott Frederick
  */
 @ExtendWith({ GradleBuildInjectionExtension.class, GradleBuildExtension.class })
-@EnabledForJreRange(max = JRE.JAVA_18)
+@EnabledForJreRange(max = JRE.JAVA_20)
 class PaketoBuilderTests {
 
 	GradleBuild gradleBuild;
@@ -87,12 +87,13 @@ class PaketoBuilderTests {
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			assertLabelsMatchManifestAttributes(config);
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/executable-jar",
-						"paketo-buildpacks/dist-zip", "paketo-buildpacks/spring-boot");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/executable-jar", "paketo-buildpacks/dist-zip",
+							"paketo-buildpacks/spring-boot");
 				metadata.processOfType("web").containsExactly("java", "org.springframework.boot.loader.JarLauncher");
-				metadata.processOfType("executable-jar").containsExactly("java",
-						"org.springframework.boot.loader.JarLauncher");
+				metadata.processOfType("executable-jar")
+					.containsExactly("java", "org.springframework.boot.loader.JarLauncher");
 			});
 			assertImageHasJvmSbomLayer(imageReference, config);
 			assertImageHasDependenciesSbomLayer(imageReference, config, "executable-jar");
@@ -157,9 +158,9 @@ class PaketoBuilderTests {
 			container.waitingFor(Wait.forHttp("/test")).start();
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/dist-zip",
-						"paketo-buildpacks/spring-boot");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/dist-zip", "paketo-buildpacks/spring-boot");
 				String launcher = "/workspace/" + projectName + "-boot/bin/" + projectName;
 				metadata.processOfType("web").containsExactly(launcher);
 				metadata.processOfType("dist-zip").containsExactly(launcher);
@@ -168,10 +169,12 @@ class PaketoBuilderTests {
 			assertImageHasDependenciesSbomLayer(imageReference, config, "dist-zip");
 			DigestCapturingCondition digest = new DigestCapturingCondition();
 			ImageAssertions.assertThat(config)
-					.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
-			ImageAssertions.assertThat(imageReference).layer(digest.getDigest(),
-					(layer) -> layer.entries().contains(projectName + "-boot/bin/" + projectName,
-							projectName + "-boot/lib/" + projectName + ".jar"));
+				.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
+			ImageAssertions.assertThat(imageReference)
+				.layer(digest.getDigest(),
+						(layer) -> layer.entries()
+							.contains(projectName + "-boot/bin/" + projectName,
+									projectName + "-boot/lib/" + projectName + ".jar"));
 		}
 		finally {
 			removeImage(imageReference);
@@ -191,9 +194,9 @@ class PaketoBuilderTests {
 			container.waitingFor(Wait.forHttp("/test")).start();
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/dist-zip",
-						"paketo-buildpacks/spring-boot");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/dist-zip", "paketo-buildpacks/spring-boot");
 				String launcher = "/workspace/" + projectName + "/bin/" + projectName;
 				metadata.processOfType("web").containsExactly(launcher);
 				metadata.processOfType("dist-zip").containsExactly(launcher);
@@ -202,8 +205,9 @@ class PaketoBuilderTests {
 			assertImageHasDependenciesSbomLayer(imageReference, config, "dist-zip");
 			DigestCapturingCondition digest = new DigestCapturingCondition();
 			ImageAssertions.assertThat(config)
-					.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
-			ImageAssertions.assertThat(imageReference).layer(digest.getDigest(), (layer) -> layer.entries()
+				.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
+			ImageAssertions.assertThat(imageReference)
+				.layer(digest.getDigest(), (layer) -> layer.entries()
 					.contains(projectName + "/bin/" + projectName, projectName + "/lib/" + projectName + "-plain.jar")
 					.anyMatch((s) -> s.startsWith(projectName + "/lib/spring-boot-"))
 					.anyMatch((s) -> s.startsWith(projectName + "/lib/spring-core-"))
@@ -228,12 +232,13 @@ class PaketoBuilderTests {
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			assertLabelsMatchManifestAttributes(config);
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/executable-jar",
-						"paketo-buildpacks/dist-zip", "paketo-buildpacks/spring-boot");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/executable-jar", "paketo-buildpacks/dist-zip",
+							"paketo-buildpacks/spring-boot");
 				metadata.processOfType("web").containsExactly("java", "org.springframework.boot.loader.WarLauncher");
-				metadata.processOfType("executable-jar").containsExactly("java",
-						"org.springframework.boot.loader.WarLauncher");
+				metadata.processOfType("executable-jar")
+					.containsExactly("java", "org.springframework.boot.loader.WarLauncher");
 			});
 			assertImageHasJvmSbomLayer(imageReference, config);
 			assertImageHasDependenciesSbomLayer(imageReference, config, "executable-jar");
@@ -257,19 +262,27 @@ class PaketoBuilderTests {
 			container.waitingFor(Wait.forHttp("/test")).start();
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/apache-tomcat",
-						"paketo-buildpacks/dist-zip", "paketo-buildpacks/spring-boot");
-				metadata.processOfType("web").containsExactly("bash", "catalina.sh", "run");
-				metadata.processOfType("tomcat").containsExactly("bash", "catalina.sh", "run");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/apache-tomcat", "paketo-buildpacks/dist-zip",
+							"paketo-buildpacks/spring-boot");
+				metadata.processOfType("web")
+					.satisfiesExactly((command) -> assertThat(command).endsWith("sh"),
+							(arg) -> assertThat(arg).endsWith("catalina.sh"),
+							(arg) -> assertThat(arg).isEqualTo("run"));
+				metadata.processOfType("tomcat")
+					.satisfiesExactly((command) -> assertThat(command).endsWith("sh"),
+							(arg) -> assertThat(arg).endsWith("catalina.sh"),
+							(arg) -> assertThat(arg).isEqualTo("run"));
 			});
 			assertImageHasJvmSbomLayer(imageReference, config);
 			assertImageHasDependenciesSbomLayer(imageReference, config, "apache-tomcat");
 			DigestCapturingCondition digest = new DigestCapturingCondition();
 			ImageAssertions.assertThat(config)
-					.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
-			ImageAssertions.assertThat(imageReference).layer(digest.getDigest(),
-					(layer) -> layer.entries()
+				.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(1, digest));
+			ImageAssertions.assertThat(imageReference)
+				.layer(digest.getDigest(),
+						(layer) -> layer.entries()
 							.contains("WEB-INF/classes/example/ExampleApplication.class",
 									"WEB-INF/classes/example/HelloController.class", "META-INF/MANIFEST.MF")
 							.anyMatch((s) -> s.startsWith("WEB-INF/lib/spring-boot-"))
@@ -282,6 +295,7 @@ class PaketoBuilderTests {
 	}
 
 	@Test
+	@EnabledForJreRange(max = JRE.JAVA_17)
 	void nativeApp() throws Exception {
 		this.gradleBuild.expectDeprecationMessages("uses or overrides a deprecated API");
 		writeMainClass();
@@ -295,11 +309,14 @@ class PaketoBuilderTests {
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			assertLabelsMatchManifestAttributes(config);
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
-				metadata.buildpacks().contains("paketo-buildpacks/ca-certificates",
-						"paketo-buildpacks/bellsoft-liberica", "paketo-buildpacks/executable-jar",
-						"paketo-buildpacks/spring-boot", "paketo-buildpacks/native-image");
-				metadata.processOfType("web").containsExactly("/workspace/example.ExampleApplication");
-				metadata.processOfType("native-image").containsExactly("/workspace/example.ExampleApplication");
+				metadata.buildpacks()
+					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",
+							"paketo-buildpacks/executable-jar", "paketo-buildpacks/spring-boot",
+							"paketo-buildpacks/native-image");
+				metadata.processOfType("web")
+					.satisfiesExactly((command) -> assertThat(command).endsWith("/example.ExampleApplication"));
+				metadata.processOfType("native-image")
+					.satisfiesExactly((command) -> assertThat(command).endsWith("/example.ExampleApplication"));
 			});
 			assertImageHasDependenciesSbomLayer(imageReference, config, "native-image");
 		}
@@ -403,16 +420,17 @@ class PaketoBuilderTests {
 		DigestCapturingCondition digest = new DigestCapturingCondition();
 		ImageAssertions.assertThat(config).lifecycleMetadata((metadata) -> metadata.sbomLayerSha().has(digest));
 		ImageAssertions.assertThat(imageReference).layer(digest.getDigest(), (layer) -> {
-			layer.entries().contains("/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.syft.json",
-					"/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.cdx.json");
+			layer.entries()
+				.contains("/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.syft.json",
+						"/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.cdx.json");
 			layer.jsonEntry("/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.syft.json",
-					(json) -> json.extractingJsonPathArrayValue("$.artifacts.[*].name").contains("spring-beans",
-							"spring-boot", "spring-boot-autoconfigure", "spring-context", "spring-core",
-							"spring-expression", "spring-jcl", "spring-web", "spring-webmvc"));
+					(json) -> json.extractingJsonPathArrayValue("$.artifacts.[*].name")
+						.contains("spring-beans", "spring-boot", "spring-boot-autoconfigure", "spring-context",
+								"spring-core", "spring-expression", "spring-jcl", "spring-web", "spring-webmvc"));
 			layer.jsonEntry("/layers/sbom/launch/paketo-buildpacks_" + buildpack + "/sbom.cdx.json",
-					(json) -> json.extractingJsonPathArrayValue("$.components.[*].name").contains("spring-beans",
-							"spring-boot", "spring-boot-autoconfigure", "spring-context", "spring-core",
-							"spring-expression", "spring-jcl", "spring-web", "spring-webmvc"));
+					(json) -> json.extractingJsonPathArrayValue("$.components.[*].name")
+						.contains("spring-beans", "spring-boot", "spring-boot-autoconfigure", "spring-context",
+								"spring-core", "spring-expression", "spring-jcl", "spring-web", "spring-webmvc"));
 		});
 	}
 
@@ -420,18 +438,23 @@ class PaketoBuilderTests {
 			throws IOException {
 		DigestsCapturingCondition digests = new DigestsCapturingCondition();
 		ImageAssertions.assertThat(config)
-				.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(5, digests));
+			.lifecycleMetadata((metadata) -> metadata.appLayerShas().haveExactly(5, digests));
 		LayersIndex layersIndex = LayersIndex.fromArchiveFile(projectArchiveFile());
-		ImageAssertions.assertThat(imageReference).layer(digests.getDigest(0), (layer) -> layer.entries()
+		ImageAssertions.assertThat(imageReference)
+			.layer(digests.getDigest(0), (layer) -> layer.entries()
 				.allMatch((entry) -> startsWithOneOf(entry, layersIndex.getLayer("dependencies"))));
-		ImageAssertions.assertThat(imageReference).layer(digests.getDigest(1), (layer) -> layer.entries()
+		ImageAssertions.assertThat(imageReference)
+			.layer(digests.getDigest(1), (layer) -> layer.entries()
 				.allMatch((entry) -> startsWithOneOf(entry, layersIndex.getLayer("spring-boot-loader"))));
-		ImageAssertions.assertThat(imageReference).layer(digests.getDigest(2), (layer) -> layer.entries()
+		ImageAssertions.assertThat(imageReference)
+			.layer(digests.getDigest(2), (layer) -> layer.entries()
 				.allMatch((entry) -> startsWithOneOf(entry, layersIndex.getLayer("snapshot-dependencies"))));
-		ImageAssertions.assertThat(imageReference).layer(digests.getDigest(3), (layer) -> layer.entries()
+		ImageAssertions.assertThat(imageReference)
+			.layer(digests.getDigest(3), (layer) -> layer.entries()
 				.allMatch((entry) -> startsWithOneOf(entry, layersIndex.getLayer("application"))));
-		ImageAssertions.assertThat(imageReference).layer(digests.getDigest(4),
-				(layer) -> layer.entries().allMatch((entry) -> entry.contains("lib/spring-cloud-bindings-")));
+		ImageAssertions.assertThat(imageReference)
+			.layer(digests.getDigest(4),
+					(layer) -> layer.entries().allMatch((entry) -> entry.contains("lib/spring-cloud-bindings-")));
 	}
 
 	private File projectArchiveFile() {

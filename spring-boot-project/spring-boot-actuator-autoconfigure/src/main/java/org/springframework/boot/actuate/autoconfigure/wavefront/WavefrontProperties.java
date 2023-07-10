@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.boot.actuate.autoconfigure.metrics.export.properties.PushRegistryProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -67,6 +71,11 @@ public class WavefrontProperties {
 	 * Metrics configuration.
 	 */
 	private final Metrics metrics = new Metrics();
+
+	/**
+	 * Customized span tags for RED metrics.
+	 */
+	private Set<String> traceDerivedCustomTagKeys = new HashSet<>();
 
 	public Application getApplication() {
 		return this.application;
@@ -150,6 +159,14 @@ public class WavefrontProperties {
 		return "proxy".equals(this.uri.getScheme());
 	}
 
+	public Set<String> getTraceDerivedCustomTagKeys() {
+		return this.traceDerivedCustomTagKeys;
+	}
+
+	public void setTraceDerivedCustomTagKeys(Set<String> traceDerivedCustomTagKeys) {
+		this.traceDerivedCustomTagKeys = traceDerivedCustomTagKeys;
+	}
+
 	public static class Application {
 
 		/**
@@ -172,6 +189,11 @@ public class WavefrontProperties {
 		 * Wavefront Shard name used in ApplicationTags.
 		 */
 		private String shardName;
+
+		/**
+		 * Wavefront custom tags used in ApplicationTags.
+		 */
+		private Map<String, String> customTags = new HashMap<>();
 
 		public String getServiceName() {
 			return this.serviceName;
@@ -203,6 +225,14 @@ public class WavefrontProperties {
 
 		public void setShardName(String shardName) {
 			this.shardName = shardName;
+		}
+
+		public Map<String, String> getCustomTags() {
+			return this.customTags;
+		}
+
+		public void setCustomTags(Map<String, String> customTags) {
+			this.customTags = customTags;
 		}
 
 	}

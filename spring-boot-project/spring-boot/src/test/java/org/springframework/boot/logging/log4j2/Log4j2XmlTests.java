@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.boot.logging.LoggingSystemProperties;
+import org.springframework.boot.logging.LoggingSystemProperty;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,7 +53,7 @@ class Log4j2XmlTests {
 
 	@Test
 	void whenLogExceptionConversionWordIsSetThenConsoleUsesIt() {
-		withSystemProperty(LoggingSystemProperties.EXCEPTION_CONVERSION_WORD, "custom",
+		withSystemProperty(LoggingSystemProperty.EXCEPTION_CONVERSION_WORD.getEnvironmentVariableName(), "custom",
 				() -> assertThat(consolePattern()).contains("custom"));
 	}
 
@@ -64,7 +64,7 @@ class Log4j2XmlTests {
 
 	@Test
 	void whenLogLevelPatternIsSetThenConsoleUsesIt() {
-		withSystemProperty(LoggingSystemProperties.LOG_LEVEL_PATTERN, "custom",
+		withSystemProperty(LoggingSystemProperty.LEVEL_PATTERN.getEnvironmentVariableName(), "custom",
 				() -> assertThat(consolePattern()).contains("custom"));
 	}
 
@@ -75,7 +75,7 @@ class Log4j2XmlTests {
 
 	@Test
 	void whenLogDateformatPatternIsSetThenConsoleUsesIt() {
-		withSystemProperty(LoggingSystemProperties.LOG_DATEFORMAT_PATTERN, "dd-MM-yyyy",
+		withSystemProperty(LoggingSystemProperty.DATEFORMAT_PATTERN.getEnvironmentVariableName(), "dd-MM-yyyy",
 				() -> assertThat(consolePattern()).contains("dd-MM-yyyy"));
 	}
 
@@ -102,8 +102,8 @@ class Log4j2XmlTests {
 
 	protected Configuration initializeConfiguration() {
 		LoggerContext context = new LoggerContext("test");
-		Configuration configuration = ConfigurationFactory.getInstance().getConfiguration(context,
-				configurationSource());
+		Configuration configuration = ConfigurationFactory.getInstance()
+			.getConfiguration(context, configurationSource());
 		configuration.initialize();
 		return configuration;
 	}

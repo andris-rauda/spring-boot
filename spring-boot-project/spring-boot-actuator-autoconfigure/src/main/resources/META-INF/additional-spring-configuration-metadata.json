@@ -56,6 +56,12 @@
       ]
     },
     {
+      "name": "management.endpoint.health.validate-group-membership",
+      "type": "java.lang.Boolean",
+      "description": "Whether to validate health group membership on startup. Validation fails if a group includes or excludes a health contributor that does not exist.",
+      "defaultValue": true
+    },
+    {
       "name": "management.endpoints.enabled-by-default",
       "type": "java.lang.Boolean",
       "description": "Whether to enable or disable all endpoints by default."
@@ -1975,10 +1981,18 @@
       }
     },
     {
+      "name": "management.metrics.web.client.request.metric-name",
+      "type": "java.lang.String",
+      "deprecation": {
+        "replacement": "management.observations.http.client.requests.name",
+        "level": "error"
+      }
+    },
+    {
       "name": "management.metrics.web.client.requests-metric-name",
       "type": "java.lang.String",
       "deprecation": {
-        "replacement": "management.metrics.web.client.request.metric-name",
+        "replacement": "management.observations.http.client.requests.name",
         "level": "error"
       }
     },
@@ -2025,12 +2039,24 @@
       }
     },
     {
+      "name": "management.metrics.web.server.request.metric-name",
+      "type": "java.lang.String",
+      "deprecation": {
+        "replacement": "management.observations.http.server.requests.name",
+        "level": "error"
+      }
+    },
+    {
       "name": "management.metrics.web.server.requests-metric-name",
       "type": "java.lang.String",
       "deprecation": {
-        "replacement": "management.metrics.web.server.request.metric-name",
+        "replacement": "management.observations.http.server.requests.name",
         "level": "error"
       }
+    },
+    {
+      "name": "management.otlp.tracing.compression",
+      "defaultValue": "none"
     },
     {
       "name": "management.prometheus.metrics.export.histogram-flavor",
@@ -2053,6 +2079,10 @@
         "replacement": "management.server.base-path",
         "level": "error"
       }
+    },
+    {
+      "name": "management.server.ssl.bundle",
+      "description": "The name of a configured SSL bundle."
     },
     {
       "name": "management.server.ssl.certificate",
@@ -2166,8 +2196,18 @@
       }
     },
     {
-      "name": "management.tracing.propagation.type",
-      "defaultValue": "W3C"
+      "name": "management.tracing.propagation.consume",
+      "defaultValue": [
+        "W3C",
+        "B3",
+        "B3_MULTI"
+      ]
+    },
+    {
+      "name": "management.tracing.propagation.produce",
+      "defaultValue": [
+        "W3C"
+      ]
     }
   ],
   "hints": [

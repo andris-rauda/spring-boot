@@ -19,7 +19,7 @@ pluginManagement {
 }
 
 plugins {
-	id "com.gradle.enterprise" version "3.12.1"
+	id "com.gradle.enterprise" version "3.12.5"
 	id "io.spring.ge.conventions" version "0.0.13"
 }
 
@@ -53,6 +53,7 @@ include "spring-boot-project:spring-boot-tools:spring-boot-autoconfigure-process
 include "spring-boot-project:spring-boot-tools:spring-boot-buildpack-platform"
 include "spring-boot-project:spring-boot-tools:spring-boot-cli"
 include "spring-boot-project:spring-boot-tools:spring-boot-configuration-metadata"
+include "spring-boot-project:spring-boot-tools:spring-boot-configuration-metadata-changelog-generator"
 include "spring-boot-project:spring-boot-tools:spring-boot-configuration-processor"
 include "spring-boot-project:spring-boot-tools:spring-boot-gradle-plugin"
 include "spring-boot-project:spring-boot-tools:spring-boot-gradle-test-support"
@@ -66,9 +67,11 @@ include "spring-boot-project:spring-boot"
 include "spring-boot-project:spring-boot-autoconfigure"
 include "spring-boot-project:spring-boot-actuator"
 include "spring-boot-project:spring-boot-actuator-autoconfigure"
+include "spring-boot-project:spring-boot-docker-compose"
 include "spring-boot-project:spring-boot-devtools"
 include "spring-boot-project:spring-boot-docs"
 include "spring-boot-project:spring-boot-test"
+include "spring-boot-project:spring-boot-testcontainers"
 include "spring-boot-project:spring-boot-test-autoconfigure"
 include "spring-boot-tests:spring-boot-integration-tests:spring-boot-configuration-processor-tests"
 include "spring-boot-tests:spring-boot-integration-tests:spring-boot-launch-script-tests"

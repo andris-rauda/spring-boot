@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.boot.context.properties.bind;
 
-import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -25,14 +24,20 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import kotlin.jvm.JvmClassMappingKt;
+import kotlin.reflect.KClass;
+
 import org.springframework.aot.hint.ExecutableMode;
+import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.beans.BeanUtils;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.boot.context.properties.bind.JavaBeanBinder.BeanProperties;
+import org.springframework.boot.context.properties.bind.JavaBeanBinder.BeanProperty;
 import org.springframework.core.KotlinDetector;
 import org.springframework.core.KotlinReflectionParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
@@ -41,15 +46,14 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.StandardReflectionParameterNameDiscoverer;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.util.Assert;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
 
 /**
  * {@link RuntimeHintsRegistrar} that can be used to register {@link ReflectionHints} for
  * {@link Bindable} types, discovering any nested type it may expose through a property.
  * <p>
- * This class can be used as a base-class, or instantiated using the {@code forTypes}
- * factory methods.
+ * This class can be used as a base-class, or instantiated using the {@code forTypes} and
+ * {@code forBindables} factory methods.
  *
  * @author Andy Wilkinson
  * @author Moritz Halbritter
@@ -59,14 +63,23 @@ import org.springframework.util.ReflectionUtils;
  */
 public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 
-	private final Class<?>[] types;
+	private final Bindable<?>[] bindables;
 
 	/**
 	 * Create a new {@link BindableRuntimeHintsRegistrar} for the specified types.
 	 * @param types the types to process
 	 */
 	protected BindableRuntimeHintsRegistrar(Class<?>... types) {
-		this.types = types;
+		this(Stream.of(types).map(Bindable::of).toArray(Bindable[]::new));
+	}
+
+	/**
+	 * Create a new {@link BindableRuntimeHintsRegistrar} for the specified bindables.
+	 * @param bindables the bindables to process
+	 * @since 3.0.8
+	 */
+	protected BindableRuntimeHintsRegistrar(Bindable<?>... bindables) {
+		this.bindables = bindables;
 	}
 
 	@Override
@@ -80,8 +93,8 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 	 */
 	public void registerHints(RuntimeHints hints) {
 		Set<Class<?>> compiledWithoutParameters = new HashSet<>();
-		for (Class<?> type : this.types) {
-			new Processor(type, compiledWithoutParameters).process(hints.reflection());
+		for (Bindable<?> bindable : this.bindables) {
+			new Processor(bindable, compiledWithoutParameters).process(hints.reflection());
 		}
 		if (!compiledWithoutParameters.isEmpty()) {
 			throw new MissingParametersCompilerArgumentException(compiledWithoutParameters);
@@ -108,6 +121,27 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 	}
 
 	/**
+	 * Create a new {@link BindableRuntimeHintsRegistrar} for the specified bindables.
+	 * @param bindables the bindables to process
+	 * @return a new {@link BindableRuntimeHintsRegistrar} instance
+	 * @since 3.0.8
+	 */
+	public static BindableRuntimeHintsRegistrar forBindables(Iterable<Bindable<?>> bindables) {
+		Assert.notNull(bindables, "Bindables must not be null");
+		return forBindables(StreamSupport.stream(bindables.spliterator(), false).toArray(Bindable[]::new));
+	}
+
+	/**
+	 * Create a new {@link BindableRuntimeHintsRegistrar} for the specified bindables.
+	 * @param bindables the bindables to process
+	 * @return a new {@link BindableRuntimeHintsRegistrar} instance
+	 * @since 3.0.8
+	 */
+	public static BindableRuntimeHintsRegistrar forBindables(Bindable<?>... bindables) {
+		return new BindableRuntimeHintsRegistrar(bindables);
+	}
+
+	/**
 	 * Processor used to register the hints.
 	 */
 	private final class Processor {
@@ -127,21 +161,23 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 
 		private final Constructor<?> bindConstructor;
 
-		private final PropertyDescriptor[] propertyDescriptors;
+		private final BeanProperties bean;
 
 		private final Set<Class<?>> seen;
 
 		private final Set<Class<?>> compiledWithoutParameters;
 
-		Processor(Class<?> type, Set<Class<?>> compiledWithoutParameters) {
-			this(type, false, new HashSet<>(), compiledWithoutParameters);
+		Processor(Bindable<?> bindable, Set<Class<?>> compiledWithoutParameters) {
+			this(bindable, false, new HashSet<>(), compiledWithoutParameters);
 		}
 
-		private Processor(Class<?> type, boolean nestedType, Set<Class<?>> seen,
+		private Processor(Bindable<?> bindable, boolean nestedType, Set<Class<?>> seen,
 				Set<Class<?>> compiledWithoutParameters) {
-			this.type = type;
-			this.bindConstructor = BindConstructorProvider.DEFAULT.getBindConstructor(Bindable.of(type), nestedType);
-			this.propertyDescriptors = BeanUtils.getPropertyDescriptors(type);
+			this.type = bindable.getType().getRawClass();
+			this.bindConstructor = (bindable.getBindMethod() != BindMethod.JAVA_BEAN)
+					? BindConstructorProvider.DEFAULT.getBindConstructor(bindable.getType().resolve(), nestedType)
+					: null;
+			this.bean = JavaBeanBinder.BeanProperties.of(bindable);
 			this.seen = seen;
 			this.compiledWithoutParameters = compiledWithoutParameters;
 		}
@@ -155,7 +191,7 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 			if (this.bindConstructor != null) {
 				handleValueObjectProperties(hints);
 			}
-			else if (!ObjectUtils.isEmpty(this.propertyDescriptors)) {
+			else if (this.bean != null && !this.bean.getProperties().isEmpty()) {
 				handleJavaBeanProperties(hints);
 			}
 		}
@@ -163,11 +199,18 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 		private void handleConstructor(ReflectionHints hints) {
 			if (this.bindConstructor != null) {
 				verifyParameterNamesAreAvailable();
-				hints.registerConstructor(this.bindConstructor, ExecutableMode.INVOKE);
+				if (KotlinDetector.isKotlinType(this.bindConstructor.getDeclaringClass())) {
+					KotlinDelegate.handleConstructor(hints, this.bindConstructor);
+				}
+				else {
+					hints.registerConstructor(this.bindConstructor, ExecutableMode.INVOKE);
+				}
 				return;
 			}
-			Arrays.stream(this.type.getDeclaredConstructors()).filter(this::hasNoParameters).findFirst()
-					.ifPresent((constructor) -> hints.registerConstructor(constructor, ExecutableMode.INVOKE));
+			Arrays.stream(this.type.getDeclaredConstructors())
+				.filter(this::hasNoParameters)
+				.findFirst()
+				.ifPresent((constructor) -> hints.registerConstructor(constructor, ExecutableMode.INVOKE));
 		}
 
 		private void verifyParameterNamesAreAvailable() {
@@ -190,33 +233,18 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 		}
 
 		private void handleJavaBeanProperties(ReflectionHints hints) {
-			for (PropertyDescriptor propertyDescriptor : this.propertyDescriptors) {
-				Method writeMethod = propertyDescriptor.getWriteMethod();
-				if (writeMethod != null) {
-					hints.registerMethod(writeMethod, ExecutableMode.INVOKE);
+			Map<String, BeanProperty> properties = this.bean.getProperties();
+			properties.forEach((name, property) -> {
+				Method getter = property.getGetter();
+				if (getter != null) {
+					hints.registerMethod(getter, ExecutableMode.INVOKE);
 				}
-				Method readMethod = propertyDescriptor.getReadMethod();
-				if (readMethod != null) {
-					ResolvableType propertyType = ResolvableType.forMethodReturnType(readMethod, this.type);
-					String propertyName = propertyDescriptor.getName();
-					if (isSetterMandatory(propertyName, propertyType) && writeMethod == null) {
-						continue;
-					}
-					handleProperty(hints, propertyName, propertyType);
-					hints.registerMethod(readMethod, ExecutableMode.INVOKE);
+				Method setter = property.getSetter();
+				if (setter != null) {
+					hints.registerMethod(setter, ExecutableMode.INVOKE);
 				}
-			}
-		}
-
-		private boolean isSetterMandatory(String propertyName, ResolvableType propertyType) {
-			Class<?> propertyClass = propertyType.resolve();
-			if (propertyClass == null) {
-				return true;
-			}
-			if (isContainer(propertyType)) {
-				return false;
-			}
-			return !isNestedType(propertyName, propertyClass);
+				handleProperty(hints, name, property.getType());
+			});
 		}
 
 		private void handleProperty(ReflectionHints hints, String propertyName, ResolvableType propertyType) {
@@ -240,7 +268,7 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 		}
 
 		private void processNested(Class<?> type, ReflectionHints hints) {
-			new Processor(type, true, this.seen, this.compiledWithoutParameters).process(hints);
+			new Processor(Bindable.of(type), true, this.seen, this.compiledWithoutParameters).process(hints);
 		}
 
 		private Class<?> getComponentClass(ResolvableType type) {
@@ -298,6 +326,23 @@ public class BindableRuntimeHintsRegistrar implements RuntimeHintsRegistrar {
 
 		private boolean isJavaType(Class<?> candidate) {
 			return candidate.getPackageName().startsWith("java.");
+		}
+
+	}
+
+	/**
+	 * Inner class to avoid a hard dependency on Kotlin at runtime.
+	 */
+	private static class KotlinDelegate {
+
+		static void handleConstructor(ReflectionHints hints, Constructor<?> constructor) {
+			KClass<?> kClass = JvmClassMappingKt.getKotlinClass(constructor.getDeclaringClass());
+			if (kClass.isData()) {
+				hints.registerType(constructor.getDeclaringClass(), MemberCategory.INVOKE_DECLARED_CONSTRUCTORS);
+			}
+			else {
+				hints.registerConstructor(constructor, ExecutableMode.INVOKE);
+			}
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Set;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import org.springframework.boot.autoconfigure.domain.scan.a.EmbeddableA;
 import org.springframework.boot.autoconfigure.domain.scan.a.EntityA;
@@ -39,6 +38,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -53,7 +53,7 @@ class EntityScannerTests {
 	@Test
 	void createWhenContextIsNullShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new EntityScanner(null))
-				.withMessageContaining("Context must not be null");
+			.withMessageContaining("Context must not be null");
 	}
 
 	@Test
@@ -69,7 +69,7 @@ class EntityScannerTests {
 	void scanShouldScanFromResolvedPlaceholderPackage() throws Exception {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		TestPropertyValues.of("com.example.entity-package=org.springframework.boot.autoconfigure.domain.scan")
-				.applyTo(context);
+			.applyTo(context);
 		context.register(ScanPlaceholderConfig.class);
 		context.refresh();
 		EntityScanner scanner = new EntityScanner(context);
@@ -105,24 +105,25 @@ class EntityScannerTests {
 		ClassPathScanningCandidateComponentProvider candidateComponentProvider = mock(
 				ClassPathScanningCandidateComponentProvider.class);
 		given(candidateComponentProvider.findCandidateComponents("org.springframework.boot.autoconfigure.domain.scan"))
-				.willReturn(Collections.emptySet());
+			.willReturn(Collections.emptySet());
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ScanConfig.class);
 		TestEntityScanner scanner = new TestEntityScanner(context, candidateComponentProvider);
 		scanner.scan(Entity.class);
-		ArgumentCaptor<AnnotationTypeFilter> annotationTypeFilter = ArgumentCaptor.forClass(AnnotationTypeFilter.class);
-		then(candidateComponentProvider).should().addIncludeFilter(annotationTypeFilter.capture());
 		then(candidateComponentProvider).should()
-				.findCandidateComponents("org.springframework.boot.autoconfigure.domain.scan");
+			.addIncludeFilter(
+					assertArg((typeFilter) -> assertThat(typeFilter).isInstanceOfSatisfying(AnnotationTypeFilter.class,
+							(filter) -> assertThat(filter.getAnnotationType()).isEqualTo(Entity.class))));
+		then(candidateComponentProvider).should()
+			.findCandidateComponents("org.springframework.boot.autoconfigure.domain.scan");
 		then(candidateComponentProvider).shouldHaveNoMoreInteractions();
-		assertThat(annotationTypeFilter.getValue().getAnnotationType()).isEqualTo(Entity.class);
 	}
 
 	@Test
 	void scanShouldScanCommaSeparatedPackagesInPlaceholderPackage() throws Exception {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		TestPropertyValues.of(
-				"com.example.entity-package=org.springframework.boot.autoconfigure.domain.scan.a,org.springframework.boot.autoconfigure.domain.scan.b")
-				.applyTo(context);
+		TestPropertyValues
+			.of("com.example.entity-package=org.springframework.boot.autoconfigure.domain.scan.a,org.springframework.boot.autoconfigure.domain.scan.b")
+			.applyTo(context);
 		context.register(ScanPlaceholderConfig.class);
 		context.refresh();
 		EntityScanner scanner = new EntityScanner(context);

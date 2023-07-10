@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.boot.actuate.logging.LoggersEndpoint.LoggersDescripto
 import org.springframework.boot.actuate.logging.LoggersEndpoint.SingleLoggerLevelsDescriptor;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.boot.logging.LoggerConfiguration;
+import org.springframework.boot.logging.LoggerConfiguration.LevelConfiguration;
 import org.springframework.boot.logging.LoggerGroups;
 import org.springframework.boot.logging.LoggingSystem;
 
@@ -68,7 +69,7 @@ class LoggersEndpointTests {
 	@Test
 	void loggersShouldReturnLoggerConfigurationsWithNoLoggerGroups() {
 		given(this.loggingSystem.getLoggerConfigurations())
-				.willReturn(Collections.singletonList(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG)));
+			.willReturn(Collections.singletonList(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG)));
 		given(this.loggingSystem.getSupportedLogLevels()).willReturn(EnumSet.allOf(LogLevel.class));
 		LoggersDescriptor result = new LoggersEndpoint(this.loggingSystem, new LoggerGroups()).loggers();
 		Map<String, LoggerLevelsDescriptor> loggers = result.getLoggers();
@@ -85,7 +86,7 @@ class LoggersEndpointTests {
 	@Test
 	void loggersShouldReturnLoggerConfigurationsWithLoggerGroups() {
 		given(this.loggingSystem.getLoggerConfigurations())
-				.willReturn(Collections.singletonList(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG)));
+			.willReturn(Collections.singletonList(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG)));
 		given(this.loggingSystem.getSupportedLogLevels()).willReturn(EnumSet.allOf(LogLevel.class));
 		LoggersDescriptor result = new LoggersEndpoint(this.loggingSystem, this.loggerGroups).loggers();
 		Map<String, GroupLoggerLevelsDescriptor> loggerGroups = result.getGroups();
@@ -105,17 +106,30 @@ class LoggersEndpointTests {
 	@Test
 	void loggerLevelsWhenNameSpecifiedShouldReturnLevels() {
 		given(this.loggingSystem.getLoggerConfiguration("ROOT"))
-				.willReturn(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG));
+			.willReturn(new LoggerConfiguration("ROOT", null, LogLevel.DEBUG));
 		SingleLoggerLevelsDescriptor levels = (SingleLoggerLevelsDescriptor) new LoggersEndpoint(this.loggingSystem,
-				this.loggerGroups).loggerLevels("ROOT");
+				this.loggerGroups)
+			.loggerLevels("ROOT");
 		assertThat(levels.getConfiguredLevel()).isNull();
 		assertThat(levels.getEffectiveLevel()).isEqualTo("DEBUG");
+	}
+
+	@Test // gh-35227
+	void loggerLevelsWhenCustomLevelShouldReturnLevels() {
+		given(this.loggingSystem.getLoggerConfiguration("ROOT"))
+			.willReturn(new LoggerConfiguration("ROOT", null, LevelConfiguration.ofCustom("FINEST")));
+		SingleLoggerLevelsDescriptor levels = (SingleLoggerLevelsDescriptor) new LoggersEndpoint(this.loggingSystem,
+				this.loggerGroups)
+			.loggerLevels("ROOT");
+		assertThat(levels.getConfiguredLevel()).isNull();
+		assertThat(levels.getEffectiveLevel()).isEqualTo("FINEST");
 	}
 
 	@Test
 	void groupNameSpecifiedShouldReturnConfiguredLevelAndMembers() {
 		GroupLoggerLevelsDescriptor levels = (GroupLoggerLevelsDescriptor) new LoggersEndpoint(this.loggingSystem,
-				this.loggerGroups).loggerLevels("test");
+				this.loggerGroups)
+			.loggerLevels("test");
 		assertThat(levels.getConfiguredLevel()).isEqualTo("DEBUG");
 		assertThat(levels.getMembers()).isEqualTo(Collections.singletonList("test.member"));
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.testsupport.testcontainers.RedisContainer;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SampleCacheApplicationRedisTests {
 
 	@Container
+	@ServiceConnection
 	private static final RedisContainer redis = new RedisContainer();
 
 	@Autowired
@@ -42,11 +42,6 @@ class SampleCacheApplicationRedisTests {
 
 	@Autowired
 	private CountryRepository countryRepository;
-
-	@DynamicPropertySource
-	static void redisProperties(DynamicPropertyRegistry properties) {
-		properties.add("spring.data.redis.url", () -> "redis://" + redis.getHost() + ":" + redis.getFirstMappedPort());
-	}
 
 	@Test
 	void validateCache() {

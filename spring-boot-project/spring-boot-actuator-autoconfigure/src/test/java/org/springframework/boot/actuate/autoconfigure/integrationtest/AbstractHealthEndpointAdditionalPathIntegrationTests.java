@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
+
 /**
  * Abstract base class for health groups with an additional path.
  *
@@ -46,46 +48,64 @@ abstract class AbstractHealthEndpointAdditionalPathIntegrationTests<T extends Ab
 	@Test
 	void groupIsAvailableAtAdditionalPath() {
 		this.runner
-				.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
-						"management.endpoint.health.group.live.additional-path=server:/healthz",
-						"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient(this::testResponse, "local.server.port"));
+			.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
+					"management.endpoint.health.group.live.additional-path=server:/healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient(this::testResponse, "local.server.port"));
+	}
+
+	@Test
+	void multipleGroupsAreAvailableAtAdditionalPaths() {
+		this.runner
+			.withPropertyValues("management.endpoint.health.group.one.include=diskSpace",
+					"management.endpoint.health.group.two.include=diskSpace",
+					"management.endpoint.health.group.one.additional-path=server:/alpha",
+					"management.endpoint.health.group.two.additional-path=server:/bravo",
+					"management.endpoint.health.group.one.show-components=always",
+					"management.endpoint.health.group.two.show-components=always")
+			.run(withWebTestClient((client) -> testResponses(client, "/alpha", "/bravo"), "local.server.port"));
 	}
 
 	@Test
 	void groupIsAvailableAtAdditionalPathWithoutSlash() {
 		this.runner
-				.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
-						"management.endpoint.health.group.live.additional-path=server:healthz",
-						"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient(this::testResponse, "local.server.port"));
+			.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
+					"management.endpoint.health.group.live.additional-path=server:healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient(this::testResponse, "local.server.port"));
 	}
 
 	@Test
 	void groupIsAvailableAtAdditionalPathOnManagementPort() {
-		this.runner.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
-				"management.server.port=0", "management.endpoint.health.group.live.additional-path=management:healthz",
-				"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient(this::testResponse, "local.management.port"));
+		this.runner
+			.withPropertyValues("management.endpoint.health.group.live.include=diskSpace", "management.server.port=0",
+					"management.endpoint.health.group.live.additional-path=management:healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient(this::testResponse, "local.management.port"));
 	}
 
 	@Test
 	void groupIsAvailableAtAdditionalPathOnServerPortWithDifferentManagementPort() {
-		this.runner.withPropertyValues("management.endpoint.health.group.live.include=diskSpace",
-				"management.server.port=0", "management.endpoint.health.group.live.additional-path=server:healthz",
-				"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient(this::testResponse, "local.server.port"));
+		this.runner
+			.withPropertyValues("management.endpoint.health.group.live.include=diskSpace", "management.server.port=0",
+					"management.endpoint.health.group.live.additional-path=server:healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient(this::testResponse, "local.server.port"));
 	}
 
 	@Test
 	void groupsAreNotConfiguredWhenHealthEndpointIsNotExposed() {
 		this.runner
-				.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.web.exposure.exclude=health",
-						"management.server.port=0", "management.endpoint.health.group.live.include=diskSpace",
-						"management.endpoint.health.group.live.additional-path=server:healthz",
-						"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient((client) -> client.get().uri("/healthz").accept(MediaType.APPLICATION_JSON)
-						.exchange().expectStatus().isNotFound(), "local.server.port"));
+			.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.web.exposure.exclude=health",
+					"management.server.port=0", "management.endpoint.health.group.live.include=diskSpace",
+					"management.endpoint.health.group.live.additional-path=server:healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient((client) -> client.get()
+				.uri("/healthz")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange()
+				.expectStatus()
+				.isNotFound(), "local.server.port"));
 	}
 
 	@Test
@@ -94,25 +114,49 @@ abstract class AbstractHealthEndpointAdditionalPathIntegrationTests<T extends Ab
 				"spring.main.cloud-platform=cloud_foundry", "management.endpoint.health.group.live.include=diskSpace",
 				"management.endpoint.health.group.live.additional-path=server:healthz",
 				"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient((client) -> client.get().uri("/healthz").accept(MediaType.APPLICATION_JSON)
-						.exchange().expectStatus().isNotFound(), "local.server.port"));
+			.run(withWebTestClient((client) -> client.get()
+				.uri("/healthz")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange()
+				.expectStatus()
+				.isNotFound(), "local.server.port"));
 	}
 
 	@Test
 	void groupsAreNotConfiguredWhenHealthEndpointIsNotExposedWithDifferentManagementPortAndCloudFoundryPlatform() {
 		this.runner
-				.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.web.exposure.exclude=health",
-						"spring.main.cloud-platform=cloud_foundry", "management.server.port=0",
-						"management.endpoint.health.group.live.include=diskSpace",
-						"management.endpoint.health.group.live.additional-path=server:healthz",
-						"management.endpoint.health.group.live.show-components=always")
-				.run(withWebTestClient((client) -> client.get().uri("/healthz").accept(MediaType.APPLICATION_JSON)
-						.exchange().expectStatus().isNotFound(), "local.server.port"));
+			.withPropertyValues("spring.jmx.enabled=true", "management.endpoints.web.exposure.exclude=health",
+					"spring.main.cloud-platform=cloud_foundry", "management.server.port=0",
+					"management.endpoint.health.group.live.include=diskSpace",
+					"management.endpoint.health.group.live.additional-path=server:healthz",
+					"management.endpoint.health.group.live.show-components=always")
+			.run(withWebTestClient((client) -> client.get()
+				.uri("/healthz")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange()
+				.expectStatus()
+				.isNotFound(), "local.server.port"));
 	}
 
 	private void testResponse(WebTestClient client) {
-		client.get().uri("/healthz").accept(MediaType.APPLICATION_JSON).exchange().expectStatus().isOk().expectBody()
-				.jsonPath("status").isEqualTo("UP").jsonPath("components.diskSpace").exists();
+		testResponses(client, "/healthz");
+	}
+
+	private void testResponses(WebTestClient client, String... paths) {
+		for (String path : paths) {
+			assertThatNoException().as(path)
+				.isThrownBy(() -> client.get()
+					.uri(path)
+					.accept(MediaType.APPLICATION_JSON)
+					.exchange()
+					.expectStatus()
+					.isOk()
+					.expectBody()
+					.jsonPath("status")
+					.isEqualTo("UP")
+					.jsonPath("components.diskSpace")
+					.exists());
+		}
 	}
 
 	private ContextConsumer<A> withWebTestClient(Consumer<WebTestClient> consumer, String property) {

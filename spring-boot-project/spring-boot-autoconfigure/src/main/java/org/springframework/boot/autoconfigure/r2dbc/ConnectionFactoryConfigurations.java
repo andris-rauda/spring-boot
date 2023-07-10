@@ -51,20 +51,25 @@ import org.springframework.util.StringUtils;
  * @author Mark Paluch
  * @author Stephane Nicoll
  * @author Rodolpho S. Couto
+ * @author Moritz Halbritter
+ * @author Andy Wilkinson
+ * @author Phillip Webb
  */
 abstract class ConnectionFactoryConfigurations {
 
-	protected static ConnectionFactory createConnectionFactory(R2dbcProperties properties, ClassLoader classLoader,
+	protected static ConnectionFactory createConnectionFactory(R2dbcProperties properties,
+			R2dbcConnectionDetails connectionDetails, ClassLoader classLoader,
 			List<ConnectionFactoryOptionsBuilderCustomizer> optionsCustomizers) {
 		try {
 			return org.springframework.boot.r2dbc.ConnectionFactoryBuilder
-					.withOptions(new ConnectionFactoryOptionsInitializer().initialize(properties,
-							() -> EmbeddedDatabaseConnection.get(classLoader)))
-					.configure((options) -> {
-						for (ConnectionFactoryOptionsBuilderCustomizer optionsCustomizer : optionsCustomizers) {
-							optionsCustomizer.customize(options);
-						}
-					}).build();
+				.withOptions(new ConnectionFactoryOptionsInitializer().initialize(properties, connectionDetails,
+						() -> EmbeddedDatabaseConnection.get(classLoader)))
+				.configure((options) -> {
+					for (ConnectionFactoryOptionsBuilderCustomizer optionsCustomizer : optionsCustomizers) {
+						optionsCustomizer.customize(options);
+					}
+				})
+				.build();
 		}
 		catch (IllegalStateException ex) {
 			String message = ex.getMessage();
@@ -86,10 +91,12 @@ abstract class ConnectionFactoryConfigurations {
 		static class PooledConnectionFactoryConfiguration {
 
 			@Bean(destroyMethod = "dispose")
-			ConnectionPool connectionFactory(R2dbcProperties properties, ResourceLoader resourceLoader,
+			ConnectionPool connectionFactory(R2dbcProperties properties,
+					ObjectProvider<R2dbcConnectionDetails> connectionDetails, ResourceLoader resourceLoader,
 					ObjectProvider<ConnectionFactoryOptionsBuilderCustomizer> customizers) {
 				ConnectionFactory connectionFactory = createConnectionFactory(properties,
-						resourceLoader.getClassLoader(), customizers.orderedStream().toList());
+						connectionDetails.getIfAvailable(), resourceLoader.getClassLoader(),
+						customizers.orderedStream().toList());
 				R2dbcProperties.Pool pool = properties.getPool();
 				PropertyMapper map = PropertyMapper.get().alwaysApplyingWhenNonNull();
 				ConnectionPoolConfiguration.Builder builder = ConnectionPoolConfiguration.builder(connectionFactory);
@@ -101,6 +108,8 @@ abstract class ConnectionFactoryConfigurations {
 				map.from(pool.getMaxSize()).to(builder::maxSize);
 				map.from(pool.getValidationQuery()).whenHasText().to(builder::validationQuery);
 				map.from(pool.getValidationDepth()).to(builder::validationDepth);
+				map.from(pool.getMinIdle()).to(builder::minIdle);
+				map.from(pool.getMaxValidationTime()).to(builder::maxValidationTime);
 				return new ConnectionPool(builder.build());
 			}
 
@@ -115,10 +124,11 @@ abstract class ConnectionFactoryConfigurations {
 	static class GenericConfiguration {
 
 		@Bean
-		ConnectionFactory connectionFactory(R2dbcProperties properties, ResourceLoader resourceLoader,
+		ConnectionFactory connectionFactory(R2dbcProperties properties,
+				ObjectProvider<R2dbcConnectionDetails> connectionDetails, ResourceLoader resourceLoader,
 				ObjectProvider<ConnectionFactoryOptionsBuilderCustomizer> customizers) {
-			return createConnectionFactory(properties, resourceLoader.getClassLoader(),
-					customizers.orderedStream().toList());
+			return createConnectionFactory(properties, connectionDetails.getIfAvailable(),
+					resourceLoader.getClassLoader(), customizers.orderedStream().toList());
 		}
 
 	}
@@ -134,8 +144,8 @@ abstract class ConnectionFactoryConfigurations {
 
 		@Override
 		public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
-			BindResult<Pool> pool = Binder.get(context.getEnvironment()).bind("spring.r2dbc.pool",
-					Bindable.of(Pool.class));
+			BindResult<Pool> pool = Binder.get(context.getEnvironment())
+				.bind("spring.r2dbc.pool", Bindable.of(Pool.class));
 			if (hasPoolUrl(context.getEnvironment())) {
 				if (pool.isBound()) {
 					throw new MultipleConnectionPoolConfigurationsException();

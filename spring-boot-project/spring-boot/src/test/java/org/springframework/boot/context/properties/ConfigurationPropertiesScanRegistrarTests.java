@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.boot.context.properties.ConfigurationPropertiesBean.BindMethod;
+import org.springframework.boot.context.properties.bind.BindMethod;
 import org.springframework.boot.context.properties.scan.combined.c.CombinedConfiguration;
 import org.springframework.boot.context.properties.scan.combined.d.OtherCombinedConfiguration;
 import org.springframework.boot.context.properties.scan.valid.ConfigurationPropertiesScanConfiguration;
@@ -81,7 +81,7 @@ class ConfigurationPropertiesScanRegistrarTests {
 				beanFactory);
 		assertThat(beanFactory.containsBeanDefinition(
 				"foo-org.springframework.boot.context.properties.scan.valid.ConfigurationPropertiesScanConfiguration$FooProperties"))
-						.isFalse();
+			.isFalse();
 		BeanDefinition aDefinition = beanFactory.getBeanDefinition(
 				"a-org.springframework.boot.context.properties.scan.valid.a.AScanConfiguration$AProperties");
 		BeanDefinition bFirstDefinition = beanFactory.getBeanDefinition(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,12 +58,6 @@ public class WebMvcProperties {
 	private boolean dispatchOptionsRequest = true;
 
 	/**
-	 * Whether the content of the "default" model should be ignored during redirect
-	 * scenarios.
-	 */
-	private boolean ignoreDefaultModelOnRedirect = true;
-
-	/**
 	 * Whether to publish a ServletRequestHandledEvent at the end of each request.
 	 */
 	private boolean publishRequestHandledEvents = true;
@@ -71,8 +65,10 @@ public class WebMvcProperties {
 	/**
 	 * Whether a "NoHandlerFoundException" should be thrown if no Handler was found to
 	 * process a request.
+	 * @deprecated since 3.2.0 for removal in 3.4.0
 	 */
-	private boolean throwExceptionIfNoHandlerFound = false;
+	@Deprecated(since = "3.2.0", forRemoval = true)
+	private boolean throwExceptionIfNoHandlerFound = true;
 
 	/**
 	 * Whether logging of (potentially sensitive) request details at DEBUG and TRACE level
@@ -120,17 +116,6 @@ public class WebMvcProperties {
 		return this.format;
 	}
 
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	@DeprecatedConfigurationProperty(reason = "Deprecated for removal in Spring MVC")
-	public boolean isIgnoreDefaultModelOnRedirect() {
-		return this.ignoreDefaultModelOnRedirect;
-	}
-
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	public void setIgnoreDefaultModelOnRedirect(boolean ignoreDefaultModelOnRedirect) {
-		this.ignoreDefaultModelOnRedirect = ignoreDefaultModelOnRedirect;
-	}
-
 	public boolean isPublishRequestHandledEvents() {
 		return this.publishRequestHandledEvents;
 	}
@@ -139,10 +124,14 @@ public class WebMvcProperties {
 		this.publishRequestHandledEvents = publishRequestHandledEvents;
 	}
 
+	@Deprecated(since = "3.2.0", forRemoval = true)
+	@DeprecatedConfigurationProperty(
+			reason = "DispatcherServlet property is deprecated for removal and should no longer need to be configured")
 	public boolean isThrowExceptionIfNoHandlerFound() {
 		return this.throwExceptionIfNoHandlerFound;
 	}
 
+	@Deprecated(since = "3.2.0", forRemoval = true)
 	public void setThrowExceptionIfNoHandlerFound(boolean throwExceptionIfNoHandlerFound) {
 		this.throwExceptionIfNoHandlerFound = throwExceptionIfNoHandlerFound;
 	}
@@ -437,6 +426,7 @@ public class WebMvcProperties {
 
 	/**
 	 * Matching strategy options.
+	 *
 	 * @since 2.4.0
 	 */
 	public enum MatchingStrategy {

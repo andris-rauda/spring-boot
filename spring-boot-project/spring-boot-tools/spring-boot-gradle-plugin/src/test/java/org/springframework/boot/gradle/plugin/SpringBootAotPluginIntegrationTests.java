@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,25 +42,25 @@ class SpringBootAotPluginIntegrationTests {
 	@TestTemplate
 	void noProcessAotTaskWithoutAotPluginApplied() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=processAot").getOutput())
-				.contains("processAot exists = false");
+			.contains("processAot exists = false");
 	}
 
 	@TestTemplate
 	void noProcessTestAotTaskWithoutAotPluginApplied() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=processTestAot").getOutput())
-				.contains("processTestAot exists = false");
+			.contains("processTestAot exists = false");
 	}
 
 	@TestTemplate
 	void applyingAotPluginCreatesProcessAotTask() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=processAot").getOutput())
-				.contains("processAot exists = true");
+			.contains("processAot exists = true");
 	}
 
 	@TestTemplate
 	void applyingAotPluginCreatesProcessTestAotTask() {
 		assertThat(this.gradleBuild.build("taskExists", "-PtaskName=processTestAot").getOutput())
-				.contains("processTestAot exists = true");
+			.contains("processTestAot exists = true");
 	}
 
 	@TestTemplate
@@ -96,17 +96,29 @@ class SpringBootAotPluginIntegrationTests {
 	}
 
 	@TestTemplate
+	void processAotDoesNotHaveDevelopmentOnlyDependenciesOnItsClasspath() {
+		String output = this.gradleBuild.build("processAotClasspath").getOutput();
+		assertThat(output).doesNotContain("commons-lang");
+	}
+
+	@TestTemplate
+	void processTestAotDoesNotHaveDevelopmentOnlyDependenciesOnItsClasspath() {
+		String output = this.gradleBuild.build("processTestAotClasspath", "--stacktrace").getOutput();
+		assertThat(output).doesNotContain("commons-lang");
+	}
+
+	@TestTemplate
 	void processAotRunsWhenProjectHasMainSource() throws IOException {
 		writeMainClass("org.springframework.boot", "SpringApplicationAotProcessor");
 		writeMainClass("com.example", "Main");
 		assertThat(this.gradleBuild.build("processAot").task(":processAot").getOutcome())
-				.isEqualTo(TaskOutcome.SUCCESS);
+			.isEqualTo(TaskOutcome.SUCCESS);
 	}
 
 	@TestTemplate
 	void processTestAotIsSkippedWhenProjectHasNoTestSource() {
 		assertThat(this.gradleBuild.build("processTestAot").task(":processTestAot").getOutcome())
-				.isEqualTo(TaskOutcome.NO_SOURCE);
+			.isEqualTo(TaskOutcome.NO_SOURCE);
 	}
 
 	private void writeMainClass(String packageName, String className) throws IOException {

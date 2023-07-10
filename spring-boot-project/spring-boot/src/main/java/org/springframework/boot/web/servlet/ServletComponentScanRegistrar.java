@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import org.springframework.beans.factory.aot.BeanRegistrationExcludeFilter;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.beans.factory.support.RegisteredBean;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
@@ -54,7 +56,7 @@ class ServletComponentScanRegistrar implements ImportBeanDefinitionRegistrar {
 
 	private void updatePostProcessor(BeanDefinitionRegistry registry, Set<String> packagesToScan) {
 		ServletComponentRegisteringPostProcessorBeanDefinition definition = (ServletComponentRegisteringPostProcessorBeanDefinition) registry
-				.getBeanDefinition(BEAN_NAME);
+			.getBeanDefinition(BEAN_NAME);
 		definition.addPackageNames(packagesToScan);
 	}
 
@@ -66,7 +68,7 @@ class ServletComponentScanRegistrar implements ImportBeanDefinitionRegistrar {
 
 	private Set<String> getPackagesToScan(AnnotationMetadata metadata) {
 		AnnotationAttributes attributes = AnnotationAttributes
-				.fromMap(metadata.getAnnotationAttributes(ServletComponentScan.class.getName()));
+			.fromMap(metadata.getAnnotationAttributes(ServletComponentScan.class.getName()));
 		String[] basePackages = attributes.getStringArray("basePackages");
 		Class<?>[] basePackageClasses = attributes.getClassArray("basePackageClasses");
 		Set<String> packagesToScan = new LinkedHashSet<>(Arrays.asList(basePackages));
@@ -96,6 +98,15 @@ class ServletComponentScanRegistrar implements ImportBeanDefinitionRegistrar {
 
 		private void addPackageNames(Collection<String> additionalPackageNames) {
 			this.packageNames.addAll(additionalPackageNames);
+		}
+
+	}
+
+	static class ServletComponentScanBeanRegistrationExcludeFilter implements BeanRegistrationExcludeFilter {
+
+		@Override
+		public boolean isExcludedFromAotProcessing(RegisteredBean registeredBean) {
+			return BEAN_NAME.equals(registeredBean.getBeanName());
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,13 +43,15 @@ import org.antlr.v4.runtime.Lexer;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.core5.http.HttpRequest;
+import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.util.GradleVersion;
 import org.jetbrains.kotlin.gradle.model.KotlinProject;
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin;
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlugin;
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformJvmPlugin;
 import org.jetbrains.kotlin.project.model.LanguageSettings;
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion;
 import org.tomlj.Toml;
 
 import org.springframework.asm.ClassVisitor;
@@ -117,13 +119,16 @@ public class GradleBuild {
 				new File(pathOfJarContaining(DependencyManagementPlugin.class)),
 				new File(pathOfJarContaining("org.jetbrains.kotlin.cli.common.PropertiesKt")),
 				new File(pathOfJarContaining("org.jetbrains.kotlin.compilerRunner.KotlinLogger")),
-				new File(pathOfJarContaining(KotlinPlugin.class)), new File(pathOfJarContaining(KotlinProject.class)),
+				new File(pathOfJarContaining(KotlinPlatformJvmPlugin.class)),
+				new File(pathOfJarContaining(KotlinProject.class)),
+				new File(pathOfJarContaining(KotlinToolingVersion.class)),
 				new File(pathOfJarContaining("org.jetbrains.kotlin.daemon.client.KotlinCompilerClient")),
 				new File(pathOfJarContaining(KotlinCompilerPluginSupportPlugin.class)),
 				new File(pathOfJarContaining(LanguageSettings.class)),
 				new File(pathOfJarContaining(ArchiveEntry.class)), new File(pathOfJarContaining(BuildRequest.class)),
 				new File(pathOfJarContaining(HttpClientConnectionManager.class)),
-				new File(pathOfJarContaining(HttpRequest.class)), new File(pathOfJarContaining(Module.class)),
+				new File(pathOfJarContaining(HttpRequest.class)),
+				new File(pathOfJarContaining(HttpVersionPolicy.class)), new File(pathOfJarContaining(Module.class)),
 				new File(pathOfJarContaining(Versioned.class)),
 				new File(pathOfJarContaining(ParameterNamesModule.class)),
 				new File(pathOfJarContaining(JsonView.class)), new File(pathOfJarContaining(Platform.class)),
@@ -184,6 +189,10 @@ public class GradleBuild {
 		return this;
 	}
 
+	public boolean gradleVersionIsAtLeast(String version) {
+		return GradleVersion.version(this.gradleVersion).compareTo(GradleVersion.version(version)) >= 0;
+	}
+
 	public BuildResult build(String... arguments) {
 		try {
 			BuildResult result = prepareRunner(arguments).build();
@@ -224,8 +233,9 @@ public class GradleBuild {
 		if (repository.exists()) {
 			FileSystemUtils.copyRecursively(repository, new File(this.projectDir, "repository"));
 		}
-		GradleRunner gradleRunner = GradleRunner.create().withProjectDir(this.projectDir)
-				.withPluginClasspath(pluginClasspath());
+		GradleRunner gradleRunner = GradleRunner.create()
+			.withProjectDir(this.projectDir)
+			.withPluginClasspath(pluginClasspath());
 		if (this.dsl != Dsl.KOTLIN && !this.configurationCache) {
 			// see https://github.com/gradle/gradle/issues/6862
 			gradleRunner.withDebug(true);
@@ -301,14 +311,17 @@ public class GradleBuild {
 
 	private String getProperty(File propertiesFile, String key) {
 		try {
-			assertThat(propertiesFile).withFailMessage("Expecting properties file to exist at path '%s'",
-					propertiesFile.getCanonicalFile()).exists();
+			assertThat(propertiesFile)
+				.withFailMessage("Expecting properties file to exist at path '%s'", propertiesFile.getCanonicalFile())
+				.exists();
 			Properties properties = new Properties();
 			try (FileInputStream input = new FileInputStream(propertiesFile)) {
 				properties.load(input);
 				String value = properties.getProperty(key);
-				assertThat(value).withFailMessage("Expecting properties file '%s' to contain the key '%s'",
-						propertiesFile.getCanonicalFile(), key).isNotEmpty();
+				assertThat(value)
+					.withFailMessage("Expecting properties file '%s' to contain the key '%s'",
+							propertiesFile.getCanonicalFile(), key)
+					.isNotEmpty();
 				return value;
 			}
 		}

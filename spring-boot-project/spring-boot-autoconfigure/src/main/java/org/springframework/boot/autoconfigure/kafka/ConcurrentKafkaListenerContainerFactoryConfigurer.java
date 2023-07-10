@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
-import org.springframework.kafka.support.converter.MessageConverter;
+import org.springframework.kafka.support.converter.BatchMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 
 /**
@@ -45,7 +46,9 @@ public class ConcurrentKafkaListenerContainerFactoryConfigurer {
 
 	private KafkaProperties properties;
 
-	private MessageConverter messageConverter;
+	private BatchMessageConverter batchMessageConverter;
+
+	private RecordMessageConverter recordMessageConverter;
 
 	private RecordFilterStrategy<Object, Object> recordFilterStrategy;
 
@@ -72,11 +75,19 @@ public class ConcurrentKafkaListenerContainerFactoryConfigurer {
 	}
 
 	/**
-	 * Set the {@link MessageConverter} to use.
-	 * @param messageConverter the message converter
+	 * Set the {@link BatchMessageConverter} to use.
+	 * @param batchMessageConverter the message converter
 	 */
-	void setMessageConverter(MessageConverter messageConverter) {
-		this.messageConverter = messageConverter;
+	void setBatchMessageConverter(BatchMessageConverter batchMessageConverter) {
+		this.batchMessageConverter = batchMessageConverter;
+	}
+
+	/**
+	 * Set the {@link RecordMessageConverter} to use.
+	 * @param recordMessageConverter the message converter
+	 */
+	void setRecordMessageConverter(RecordMessageConverter recordMessageConverter) {
+		this.recordMessageConverter = recordMessageConverter;
 	}
 
 	/**
@@ -164,7 +175,8 @@ public class ConcurrentKafkaListenerContainerFactoryConfigurer {
 		Listener properties = this.properties.getListener();
 		map.from(properties::getConcurrency).to(factory::setConcurrency);
 		map.from(properties::isAutoStartup).to(factory::setAutoStartup);
-		map.from(this.messageConverter).to(factory::setMessageConverter);
+		map.from(this.batchMessageConverter).to(factory::setBatchMessageConverter);
+		map.from(this.recordMessageConverter).to(factory::setRecordMessageConverter);
 		map.from(this.recordFilterStrategy).to(factory::setRecordFilterStrategy);
 		map.from(this.replyTemplate).to(factory::setReplyTemplate);
 		if (properties.getType().equals(Listener.Type.BATCH)) {
@@ -188,10 +200,13 @@ public class ConcurrentKafkaListenerContainerFactoryConfigurer {
 		map.from(properties::getNoPollThreshold).to(container::setNoPollThreshold);
 		map.from(properties.getIdleBetweenPolls()).as(Duration::toMillis).to(container::setIdleBetweenPolls);
 		map.from(properties::getIdleEventInterval).as(Duration::toMillis).to(container::setIdleEventInterval);
-		map.from(properties::getIdlePartitionEventInterval).as(Duration::toMillis)
-				.to(container::setIdlePartitionEventInterval);
-		map.from(properties::getMonitorInterval).as(Duration::getSeconds).as(Number::intValue)
-				.to(container::setMonitorInterval);
+		map.from(properties::getIdlePartitionEventInterval)
+			.as(Duration::toMillis)
+			.to(container::setIdlePartitionEventInterval);
+		map.from(properties::getMonitorInterval)
+			.as(Duration::getSeconds)
+			.as(Number::intValue)
+			.to(container::setMonitorInterval);
 		map.from(properties::getLogContainerConfig).to(container::setLogContainerConfig);
 		map.from(properties::isMissingTopicsFatal).to(container::setMissingTopicsFatal);
 		map.from(properties::isImmediateStop).to(container::setStopImmediate);

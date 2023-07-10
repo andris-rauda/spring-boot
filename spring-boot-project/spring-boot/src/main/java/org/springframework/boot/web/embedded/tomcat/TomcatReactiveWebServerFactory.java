@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import org.apache.tomcat.util.scan.StandardJarScanFilter;
 import org.springframework.boot.util.LambdaSafe;
 import org.springframework.boot.web.reactive.server.AbstractReactiveWebServerFactory;
 import org.springframework.boot.web.reactive.server.ReactiveWebServerFactory;
+import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.TomcatHttpHandlerAdapter;
@@ -199,7 +200,7 @@ public class TomcatReactiveWebServerFactory extends AbstractReactiveWebServerFac
 		if (getHttp2() != null && getHttp2().isEnabled()) {
 			connector.addUpgradeProtocol(new Http2Protocol());
 		}
-		if (getSsl() != null && getSsl().isEnabled()) {
+		if (Ssl.isEnabled(getSsl())) {
 			customizeSsl(connector);
 		}
 		TomcatConnectorCustomizer compression = new CompressionConnectorCustomizer(getCompression());
@@ -211,8 +212,9 @@ public class TomcatReactiveWebServerFactory extends AbstractReactiveWebServerFac
 
 	@SuppressWarnings("unchecked")
 	private void invokeProtocolHandlerCustomizers(ProtocolHandler protocolHandler) {
-		LambdaSafe.callbacks(TomcatProtocolHandlerCustomizer.class, this.tomcatProtocolHandlerCustomizers,
-				protocolHandler).invoke((customizer) -> customizer.customize(protocolHandler));
+		LambdaSafe
+			.callbacks(TomcatProtocolHandlerCustomizer.class, this.tomcatProtocolHandlerCustomizers, protocolHandler)
+			.invoke((customizer) -> customizer.customize(protocolHandler));
 	}
 
 	private void customizeProtocol(AbstractProtocol<?> protocol) {
@@ -222,7 +224,7 @@ public class TomcatReactiveWebServerFactory extends AbstractReactiveWebServerFac
 	}
 
 	private void customizeSsl(Connector connector) {
-		new SslConnectorCustomizer(getSsl(), getOrCreateSslStoreProvider()).customize(connector);
+		new SslConnectorCustomizer(getSsl().getClientAuth(), getSslBundle()).customize(connector);
 	}
 
 	@Override

@@ -484,7 +484,7 @@ Finally, you can take full control by defining your own `NewRelicClientProvider`
 [[actuator.metrics.export.otlp]]
 ==== OpenTelemetry
 By default, metrics are exported to {micrometer-registry-docs}/otlp[OpenTelemetry] running on your local machine.
-You can provide the location of the https://opentelemetry.io/[OpenTelemtry metric endpoint] to use by using:
+You can provide the location of the https://opentelemetry.io/[OpenTelemetry metric endpoint] to use by using:
 
 [source,yaml,indent=0,subs="verbatim",configprops,configblocks]
 ----
@@ -858,10 +858,20 @@ NOTE: Only caches that are configured on startup are bound to the registry.
 For caches not defined in the cache’s configuration, such as caches created on the fly or programmatically after the startup phase, an explicit registration is required.
 A `CacheMetricsRegistrar` bean is made available to make that process easier.
 
+
+
+[[actuator.metrics.supported.spring-batch]]
+==== Spring Batch Metrics
+
+See the {spring-batch-docs}monitoring-and-metrics.html[Spring Batch reference documentation].
+
+
+
 [[actuator.metrics.supported.spring-graphql]]
 ==== Spring GraphQL Metrics
 
 See the {spring-graphql-docs}[Spring GraphQL reference documentation].
+
 
 
 [[actuator.metrics.supported.jdbc]]
@@ -1090,19 +1100,8 @@ These use the global registry that is not Spring-managed.
 
 [[actuator.metrics.customizing.common-tags]]
 ==== Common Tags
-Common tags are generally used for dimensional drill-down on the operating environment, such as host, instance, region, stack, and others.
-Commons tags are applied to all meters and can be configured, as the following example shows:
 
-[source,yaml,indent=0,subs="verbatim",configprops,configblocks]
-----
-	management:
-	  metrics:
-	    tags:
-	      region: "us-east-1"
-	      stack: "prod"
-----
-
-The preceding example adds `region` and `stack` tags to all meters with a value of `us-east-1` and `prod`, respectively.
+You can configure common tags using the <<actuator#actuator.observability.common-key-values, configprop:management.observations.key-values[] property>>.
 
 NOTE: The order of common tags is important if you use Graphite.
 As the order of common tags cannot be guaranteed by using this approach, Graphite users are advised to define a custom `MeterFilter` instead.

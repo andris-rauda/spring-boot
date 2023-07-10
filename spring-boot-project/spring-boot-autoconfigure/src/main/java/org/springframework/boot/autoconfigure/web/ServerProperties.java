@@ -154,17 +154,6 @@ public class ServerProperties {
 		this.serverHeader = serverHeader;
 	}
 
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	@DeprecatedConfigurationProperty
-	public DataSize getMaxHttpHeaderSize() {
-		return getMaxHttpRequestHeaderSize();
-	}
-
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	public void setMaxHttpHeaderSize(DataSize maxHttpHeaderSize) {
-		setMaxHttpRequestHeaderSize(maxHttpHeaderSize);
-	}
-
 	public DataSize getMaxHttpRequestHeaderSize() {
 		return this.maxHttpRequestHeaderSize;
 	}
@@ -475,6 +464,7 @@ public class ServerProperties {
 		/**
 		 * Whether to reject requests with illegal header names or values.
 		 */
+		@Deprecated(since = "2.7.12", forRemoval = true) // Remove in 3.3
 		private boolean rejectIllegalHeader = true;
 
 		/**
@@ -633,6 +623,7 @@ public class ServerProperties {
 			this.connectionTimeout = connectionTimeout;
 		}
 
+		@DeprecatedConfigurationProperty(reason = "The setting has been deprecated in Tomcat")
 		public boolean isRejectIllegalHeader() {
 			return this.rejectIllegalHeader;
 		}
@@ -989,8 +980,13 @@ public class ServerProperties {
 					+ "192\\.168\\.\\d{1,3}\\.\\d{1,3}|" // 192.168/16
 					+ "169\\.254\\.\\d{1,3}\\.\\d{1,3}|" // 169.254/16
 					+ "127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|" // 127/8
+					+ "100\\.6[4-9]{1}\\.\\d{1,3}\\.\\d{1,3}|" // 100.64.0.0/10
+					+ "100\\.[7-9]{1}\\d{1}\\.\\d{1,3}\\.\\d{1,3}|" // 100.64.0.0/10
+					+ "100\\.1[0-1]{1}\\d{1}\\.\\d{1,3}\\.\\d{1,3}|" // 100.64.0.0/10
+					+ "100\\.12[0-7]{1}\\.\\d{1,3}\\.\\d{1,3}|" // 100.64.0.0/10
 					+ "172\\.1[6-9]{1}\\.\\d{1,3}\\.\\d{1,3}|" // 172.16/12
-					+ "172\\.2[0-9]{1}\\.\\d{1,3}\\.\\d{1,3}|172\\.3[0-1]{1}\\.\\d{1,3}\\.\\d{1,3}|" //
+					+ "172\\.2[0-9]{1}\\.\\d{1,3}\\.\\d{1,3}|" // 172.16/12
+					+ "172\\.3[0-1]{1}\\.\\d{1,3}\\.\\d{1,3}|" // 172.16/12
 					+ "0:0:0:0:0:0:0:1|::1";
 
 			/**
@@ -1116,6 +1112,12 @@ public class ServerProperties {
 		 */
 		private DataSize maxHttpResponseHeaderSize = DataSize.ofKilobytes(8);
 
+		/**
+		 * Maximum number of connections that the server accepts and processes at any
+		 * given time.
+		 */
+		private int maxConnections = -1;
+
 		public Accesslog getAccesslog() {
 			return this.accesslog;
 		}
@@ -1146,6 +1148,14 @@ public class ServerProperties {
 
 		public void setMaxHttpResponseHeaderSize(DataSize maxHttpResponseHeaderSize) {
 			this.maxHttpResponseHeaderSize = maxHttpResponseHeaderSize;
+		}
+
+		public int getMaxConnections() {
+			return this.maxConnections;
+		}
+
+		public void setMaxConnections(int maxConnections) {
+			this.maxConnections = maxConnections;
 		}
 
 		/**
@@ -1389,11 +1399,6 @@ public class ServerProperties {
 		private DataSize initialBufferSize = DataSize.ofBytes(128);
 
 		/**
-		 * Maximum chunk size that can be decoded for an HTTP request.
-		 */
-		private DataSize maxChunkSize = DataSize.ofKilobytes(8);
-
-		/**
 		 * Maximum length that can be decoded for an HTTP request's initial line.
 		 */
 		private DataSize maxInitialLineLength = DataSize.ofKilobytes(4);
@@ -1437,17 +1442,6 @@ public class ServerProperties {
 
 		public void setInitialBufferSize(DataSize initialBufferSize) {
 			this.initialBufferSize = initialBufferSize;
-		}
-
-		@Deprecated(since = "3.0.0", forRemoval = true)
-		@DeprecatedConfigurationProperty(reason = "Deprecated for removal in Reactor Netty")
-		public DataSize getMaxChunkSize() {
-			return this.maxChunkSize;
-		}
-
-		@Deprecated(since = "3.0.0", forRemoval = true)
-		public void setMaxChunkSize(DataSize maxChunkSize) {
-			this.maxChunkSize = maxChunkSize;
 		}
 
 		public DataSize getMaxInitialLineLength() {
@@ -1534,9 +1528,18 @@ public class ServerProperties {
 		 * Whether the server should decode percent encoded slash characters. Enabling
 		 * encoded slashes can have security implications due to different servers
 		 * interpreting the slash differently. Only enable this if you have a legacy
-		 * application that requires it.
+		 * application that requires it. Has no effect when server.undertow.decode-slash
+		 * is set.
 		 */
 		private boolean allowEncodedSlash = false;
+
+		/**
+		 * Whether encoded slash characters (%2F) should be decoded. Decoding can cause
+		 * security problems if a front-end proxy does not perform the same decoding. Only
+		 * enable this if you have a legacy application that requires it. When set,
+		 * server.undertow.allow-encoded-slash has no effect.
+		 */
+		private Boolean decodeSlash;
 
 		/**
 		 * Whether the URL should be decoded. When disabled, percent-encoded characters in
@@ -1631,12 +1634,23 @@ public class ServerProperties {
 			this.maxCookies = maxCookies;
 		}
 
+		@DeprecatedConfigurationProperty(replacement = "server.undertow.decode-slash")
+		@Deprecated(forRemoval = true, since = "3.0.3")
 		public boolean isAllowEncodedSlash() {
 			return this.allowEncodedSlash;
 		}
 
+		@Deprecated(forRemoval = true, since = "3.0.3")
 		public void setAllowEncodedSlash(boolean allowEncodedSlash) {
 			this.allowEncodedSlash = allowEncodedSlash;
+		}
+
+		public Boolean getDecodeSlash() {
+			return this.decodeSlash;
+		}
+
+		public void setDecodeSlash(Boolean decodeSlash) {
+			this.decodeSlash = decodeSlash;
 		}
 
 		public boolean isDecodeUrl() {

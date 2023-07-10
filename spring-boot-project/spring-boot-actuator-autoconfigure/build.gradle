@@ -1,10 +1,11 @@
 plugins {
-    id "java-library"
+	id "java-library"
 	id "org.asciidoctor.jvm.convert"
 	id "org.springframework.boot.auto-configuration"
+	id "org.springframework.boot.configuration-properties"
 	id "org.springframework.boot.conventions"
 	id "org.springframework.boot.deployed"
-    id "org.springframework.boot.optional-dependencies"
+	id "org.springframework.boot.optional-dependencies"
 }
 
 description = "Spring Boot Actuator AutoConfigure"
@@ -18,7 +19,6 @@ dependencies {
 	asciidoctorExtensions("io.spring.asciidoctor:spring-asciidoctor-extensions-section-ids")
 
 	api(project(":spring-boot-project:spring-boot-actuator"))
-
 	api(project(":spring-boot-project:spring-boot"))
 	api(project(":spring-boot-project:spring-boot-autoconfigure"))
 
@@ -70,6 +70,7 @@ dependencies {
 	optional("io.micrometer:micrometer-registry-wavefront")
 	optional("io.zipkin.reporter2:zipkin-sender-urlconnection")
 	optional("io.opentelemetry:opentelemetry-exporter-zipkin")
+	optional("io.opentelemetry:opentelemetry-exporter-otlp")
 	optional("io.projectreactor.netty:reactor-netty-http")
 	optional("io.r2dbc:r2dbc-pool")
 	optional("io.r2dbc:r2dbc-spi")
@@ -77,6 +78,7 @@ dependencies {
 	optional("jakarta.persistence:jakarta.persistence-api")
 	optional("jakarta.servlet:jakarta.servlet-api")
 	optional("javax.cache:cache-api")
+	optional("org.apache.activemq:activemq-client-jakarta")
 	optional("org.apache.commons:commons-dbcp2") {
 		exclude group: "commons-logging", module: "commons-logging"
 	}
@@ -116,6 +118,7 @@ dependencies {
 	optional("org.springframework:spring-webflux")
 	optional("org.springframework:spring-webmvc")
 	optional("org.springframework.amqp:spring-rabbit")
+	optional("org.springframework.batch:spring-batch-core")
 	optional("org.springframework.data:spring-data-cassandra") {
 		exclude group: "org.slf4j", module: "jcl-over-slf4j"
 	}
@@ -171,9 +174,7 @@ dependencies {
 	testImplementation("org.springframework:spring-orm")
 	testImplementation("org.springframework.data:spring-data-rest-webmvc")
 	testImplementation("org.springframework.integration:spring-integration-jmx")
-	testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc") {
-		exclude group: "javax.servlet", module: "javax.servlet-api"
-	}
+	testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
 	testImplementation("org.springframework.restdocs:spring-restdocs-webtestclient")
 	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.yaml:snakeyaml")
@@ -194,24 +195,8 @@ dependencies {
 	}
 }
 
-test {
-	outputs.dir("${buildDir}/generated-snippets")
-}
-
 task dependencyVersions(type: org.springframework.boot.build.constraints.ExtractVersionConstraints) {
 	enforcedPlatform(":spring-boot-project:spring-boot-dependencies")
-}
-
-tasks.withType(org.asciidoctor.gradle.jvm.AbstractAsciidoctorTask) {
-	dependsOn dependencyVersions
-	doFirst {
-		def versionConstraints = dependencyVersions.versionConstraints
-		def integrationVersion = versionConstraints["org.springframework.integration:spring-integration-core"]
-		def integrationDocs = String.format("https://docs.spring.io/spring-integration/docs/%s/reference/html/", integrationVersion)
-		attributes "spring-integration-docs": integrationDocs
-	}
-	dependsOn test
-	inputs.dir("${buildDir}/generated-snippets").withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("generatedSnippets")
 }
 
 asciidoctor {
@@ -242,6 +227,32 @@ artifacts {
 	documentation zip
 }
 
-test {
+tasks.named("test") {
 	jvmArgs += "--add-opens=java.base/java.net=ALL-UNNAMED"
+	filter {
+		excludeTestsMatching("org.springframework.boot.actuate.autoconfigure.endpoint.web.documentation.*")
+	}
+}
+
+def documentationTest = tasks.register("documentationTest", Test) {
+	filter {
+		includeTestsMatching("org.springframework.boot.actuate.autoconfigure.endpoint.web.documentation.*")
+	}
+	jvmArgs += "--add-opens=java.base/java.net=ALL-UNNAMED"
+	outputs.dir("${buildDir}/generated-snippets")
+	predictiveSelection {
+		enabled = false
+	}
+}
+
+tasks.withType(org.asciidoctor.gradle.jvm.AbstractAsciidoctorTask) {
+	dependsOn dependencyVersions
+	doFirst {
+		def versionConstraints = dependencyVersions.versionConstraints
+		def integrationVersion = versionConstraints["org.springframework.integration:spring-integration-core"]
+		def integrationDocs = String.format("https://docs.spring.io/spring-integration/docs/%s/reference/html/", integrationVersion)
+		attributes "spring-integration-docs": integrationDocs
+	}
+	dependsOn documentationTest
+	inputs.dir("${buildDir}/generated-snippets").withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("generatedSnippets")
 }

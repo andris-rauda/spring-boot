@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration(proxyBeanMethods = false)
 public class MySamlRelyingPartyConfiguration {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.authorizeHttpRequests().anyRequest().authenticated();
-		http.saml2Login();
+		http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
+		http.saml2Login(withDefaults());
 		http.saml2Logout((saml2) -> saml2.logoutRequest((request) -> request.logoutUrl("/SLOService.saml2"))
-				.logoutResponse((response) -> response.logoutUrl("/SLOService.saml2")));
+			.logoutResponse((response) -> response.logoutUrl("/SLOService.saml2")));
 		return http.build();
 	}
 

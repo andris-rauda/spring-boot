@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.boot.actuate.autoconfigure.tracing;
 
 import java.util.function.Supplier;
 
+import io.micrometer.tracing.BaggageInScope;
 import io.micrometer.tracing.BaggageManager;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
@@ -60,11 +61,13 @@ class BaggagePropagationIntegrationTests {
 			assertThatTracingContextIsInitialized(autoConfig);
 			try (Tracer.SpanInScope scope = tracer.withSpan(span.start())) {
 				BaggageManager baggageManager = context.getBean(BaggageManager.class);
-				baggageManager.createBaggage(COUNTRY_CODE).set(span.context(), "FO");
-				baggageManager.createBaggage(BUSINESS_PROCESS).set(span.context(), "ALM");
-				assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
-				assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
-				assertThat(MDC.get(BUSINESS_PROCESS)).isEqualTo("ALM");
+				try (BaggageInScope fo = baggageManager.createBaggageInScope(span.context(), COUNTRY_CODE, "FO");
+						BaggageInScope alm = baggageManager.createBaggageInScope(span.context(), BUSINESS_PROCESS,
+								"ALM")) {
+					assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
+					assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
+					assertThat(MDC.get(BUSINESS_PROCESS)).isEqualTo("ALM");
+				}
 			}
 			finally {
 				span.end();
@@ -84,17 +87,20 @@ class BaggagePropagationIntegrationTests {
 			Span span = createSpan(tracer);
 			assertThatTracingContextIsInitialized(autoConfig);
 			try (Tracer.SpanInScope scope = tracer.withSpan(span.start())) {
-				context.getBean(BaggageManager.class).createBaggage(COUNTRY_CODE).set(span.context(), "FO");
-				assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
-				assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
+				try (BaggageInScope fo = context.getBean(BaggageManager.class)
+					.createBaggageInScope(span.context(), COUNTRY_CODE, "FO")) {
 
-				try (Tracer.SpanInScope scope2 = tracer.withSpan(null)) {
-					assertThatMdcContainsUnsetTraceId();
-					assertThat(MDC.get(COUNTRY_CODE)).isNull();
+					assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
+					assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
+
+					try (Tracer.SpanInScope scope2 = tracer.withSpan(null)) {
+						assertThatMdcContainsUnsetTraceId();
+						assertThat(MDC.get(COUNTRY_CODE)).isNull();
+					}
+
+					assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
+					assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
 				}
-
-				assertThat(MDC.get("traceId")).isEqualTo(span.context().traceId());
-				assertThat(MDC.get(COUNTRY_CODE)).isEqualTo("FO");
 			}
 			finally {
 				span.end();
@@ -132,13 +138,34 @@ class BaggagePropagationIntegrationTests {
 
 	enum AutoConfig implements Supplier<ApplicationContextRunner> {
 
+		BRAVE_DEFAULT {
+			@Override
+			public ApplicationContextRunner get() {
+				return new ApplicationContextRunner()
+					.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class))
+					.withPropertyValues("management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
+			}
+		},
+
+		OTEL_DEFAULT {
+			@Override
+			public ApplicationContextRunner get() {
+				return new ApplicationContextRunner()
+					.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
+					.withPropertyValues("management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
+			}
+		},
+
 		BRAVE_W3C {
 			@Override
 			public ApplicationContextRunner get() {
 				return new ApplicationContextRunner()
-						.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class)).withPropertyValues(
-								"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
-								"management.tracing.baggage.correlation.fields=country-code,bp");
+					.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=W3C",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
 			}
 		},
 
@@ -146,10 +173,10 @@ class BaggagePropagationIntegrationTests {
 			@Override
 			public ApplicationContextRunner get() {
 				return new ApplicationContextRunner()
-						.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
-						.withPropertyValues(
-								"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
-								"management.tracing.baggage.correlation.fields=country-code,bp");
+					.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=W3C",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
 			}
 		},
 
@@ -157,10 +184,21 @@ class BaggagePropagationIntegrationTests {
 			@Override
 			public ApplicationContextRunner get() {
 				return new ApplicationContextRunner()
-						.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class))
-						.withPropertyValues("management.tracing.propagation.type=B3",
-								"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
-								"management.tracing.baggage.correlation.fields=country-code,bp");
+					.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=B3",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
+			}
+		},
+
+		BRAVE_B3_MULTI {
+			@Override
+			public ApplicationContextRunner get() {
+				return new ApplicationContextRunner()
+					.withConfiguration(AutoConfigurations.of(BraveAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=B3_MULTI",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
 			}
 		},
 
@@ -168,10 +206,21 @@ class BaggagePropagationIntegrationTests {
 			@Override
 			public ApplicationContextRunner get() {
 				return new ApplicationContextRunner()
-						.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
-						.withPropertyValues("management.tracing.propagation.type=B3",
-								"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
-								"management.tracing.baggage.correlation.fields=country-code,bp");
+					.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=B3",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
+			}
+		},
+
+		OTEL_B3_MULTI {
+			@Override
+			public ApplicationContextRunner get() {
+				return new ApplicationContextRunner()
+					.withConfiguration(AutoConfigurations.of(OpenTelemetryAutoConfiguration.class))
+					.withPropertyValues("management.tracing.propagation.type=B3_MULTI",
+							"management.tracing.baggage.remote-fields=x-vcap-request-id,country-code,bp",
+							"management.tracing.baggage.correlation.fields=country-code,bp");
 			}
 		}
 

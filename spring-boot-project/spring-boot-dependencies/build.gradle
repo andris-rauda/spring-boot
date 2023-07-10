@@ -9,12 +9,48 @@ description = "Spring Boot Dependencies"
 bom {
 	effectiveBomArtifact()
 	upgrade {
-		policy = "same-major-version"
+		policy = "any"
 		gitHub {
 			issueLabels = ["type: dependency-upgrade"]
 		}
 	}
-	library("Angus Mail", "1.1.0") {
+	library("ActiveMQ", "5.18.1") {
+		group("org.apache.activemq") {
+			modules = [
+					"activemq-amqp",
+					"activemq-blueprint",
+					"activemq-broker",
+					"activemq-client",
+					"activemq-client-jakarta",
+					"activemq-console" {
+						exclude group: "commons-logging", module: "commons-logging"
+					},
+					"activemq-http",
+					"activemq-jaas",
+					"activemq-jdbc-store",
+					"activemq-jms-pool",
+					"activemq-kahadb-store",
+					"activemq-karaf",
+					"activemq-log4j-appender",
+					"activemq-mqtt",
+					"activemq-openwire-generator",
+					"activemq-openwire-legacy",
+					"activemq-osgi",
+					"activemq-partition",
+					"activemq-pool",
+					"activemq-ra",
+					"activemq-run",
+					"activemq-runtime-config",
+					"activemq-shiro",
+					"activemq-spring" {
+						exclude group: "commons-logging", module: "commons-logging"
+					},
+					"activemq-stomp",
+					"activemq-web"
+			]
+		}
+	}
+	library("Angus Mail", "2.0.2") {
 		group("org.eclipse.angus") {
 			modules = [
 				"angus-core",
@@ -29,7 +65,7 @@ bom {
 			]
 		}
 	}
-	library("Artemis", "2.27.1") {
+	library("Artemis", "2.28.0") {
 		group("org.apache.activemq") {
 			modules = [
 				"artemis-amqp-protocol",
@@ -73,21 +109,21 @@ bom {
 			]
 		}
 	}
-	library("Brave", "5.14.1") {
+	library("Brave", "5.16.0") {
 		group("io.zipkin.brave") {
 			imports = [
 				"brave-bom"
 			]
 		}
 	}
-	library("Build Helper Maven Plugin", "3.3.0") {
+	library("Build Helper Maven Plugin", "3.4.0") {
 		group("org.codehaus.mojo") {
 			plugins = [
 				"build-helper-maven-plugin"
 			]
 		}
 	}
-	library("Byte Buddy", "1.12.22") {
+	library("Byte Buddy", "1.14.5") {
 		group("net.bytebuddy") {
 			modules = [
 				"byte-buddy",
@@ -107,7 +143,7 @@ bom {
 			]
 		}
 	}
-	library("Caffeine", "3.1.2") {
+	library("Caffeine", "3.1.6") {
 		group("com.github.ben-manes.caffeine") {
 			modules = [
 				"caffeine",
@@ -117,7 +153,7 @@ bom {
 			]
 		}
 	}
-	library("Cassandra Driver", "4.15.0") {
+	library("Cassandra Driver", "4.16.0") {
 		group("com.datastax.oss") {
 			imports = [
 				"java-driver-bom"
@@ -173,7 +209,7 @@ bom {
 			]
 		}
 	}
-	library("Couchbase Client", "3.4.2") {
+	library("Couchbase Client", "3.4.7") {
 		group("com.couchbase.client") {
 			modules = [
 				"java-client"
@@ -206,7 +242,7 @@ bom {
 			]
 		}
 	}
-	library("Dropwizard Metrics", "4.2.15") {
+	library("Dropwizard Metrics", "4.2.19") {
 		group("io.dropwizard.metrics") {
 			imports = [
 				"metrics-bom"
@@ -226,7 +262,7 @@ bom {
 			]
 		}
 	}
-	library("Elasticsearch Client", "8.5.3") {
+	library("Elasticsearch Client", "8.8.1") {
 		group("org.elasticsearch.client") {
 			modules = [
 				"elasticsearch-rest-client" {
@@ -243,7 +279,7 @@ bom {
 			]
 		}
 	}
-	library("Flyway", "9.5.1") {
+	library("Flyway", "9.19.4") {
 		group("org.flywaydb") {
 			modules = [
 				"flyway-core",
@@ -263,14 +299,14 @@ bom {
 			]
 		}
 	}
-	library("Git Commit ID Plugin", "5.0.0") {
+	library("Git Commit ID Maven Plugin", "6.0.0") {
 		group("io.github.git-commit-id") {
 			plugins = [
 				"git-commit-id-maven-plugin"
 			]
 		}
 	}
-	library("Glassfish JAXB", "4.0.1") {
+	library("Glassfish JAXB", "4.0.3") {
 		group("org.glassfish.jaxb") {
 			imports = [
 				"jaxb-bom"
@@ -284,21 +320,21 @@ bom {
 			]
 		}
 	}
-	library("GraphQL Java", "19.2") {
+	library("GraphQL Java", "20.2") {
 		group("com.graphql-java") {
 			modules = [
 					"graphql-java"
 			]
 		}
 	}
-	library("Groovy", "4.0.7") {
+	library("Groovy", "4.0.12") {
 		group("org.apache.groovy") {
 			imports = [
 				"groovy-bom"
 			]
 		}
 	}
-	library("Gson", "2.9.1") {
+	library("Gson", "2.10.1") {
 		group("com.google.code.gson") {
 			modules = [
 				"gson"
@@ -321,7 +357,7 @@ bom {
 			]
 		}
 	}
-	library("Hazelcast", "5.1.5") {
+	library("Hazelcast", "5.3.1") {
 		group("com.hazelcast") {
 			modules = [
 				"hazelcast",
@@ -329,7 +365,7 @@ bom {
 			]
 		}
 	}
-	library("Hibernate", "6.1.6.Final") {
+	library("Hibernate", "6.2.5.Final") {
 		group("org.hibernate.orm") {
 			modules = [
 				"hibernate-agroal",
@@ -365,14 +401,14 @@ bom {
 			]
 		}
 	}
-	library("HSQLDB", "2.7.1") {
+	library("HSQLDB", "2.7.2") {
 		group("org.hsqldb") {
 			modules = [
 				"hsqldb"
 			]
 		}
 	}
-	library("HtmlUnit", "2.65.1") {
+	library("HtmlUnit", "2.70.0") {
 		group("net.sourceforge.htmlunit") {
 			modules = [
 				"htmlunit" {
@@ -390,7 +426,7 @@ bom {
 			]
 		}
 	}
-	library("HttpClient5", "5.1.4") {
+	library("HttpClient5", "5.2.1") {
 		group("org.apache.httpcomponents.client5") {
 			modules = [
 				"httpclient5",
@@ -408,7 +444,7 @@ bom {
 			]
 		}
 	}
-	library("HttpCore5", "5.1.5") {
+	library("HttpCore5", "5.2.2") {
 		group("org.apache.httpcomponents.core5") {
 			modules = [
 				"httpcore5",
@@ -417,7 +453,7 @@ bom {
 			]
 		}
 	}
-	library("Infinispan", "14.0.6.Final") {
+	library("Infinispan", "14.0.11.Final") {
 		group("org.infinispan") {
 			imports = [
 				"infinispan-bom"
@@ -431,14 +467,14 @@ bom {
 			]
 		}
 	}
-	library("Jackson Bom", "2.14.1") {
+	library("Jackson Bom", "2.15.2") {
 		group("com.fasterxml.jackson") {
 			imports = [
 				"jackson-bom"
 			]
 		}
 	}
-	library("Jakarta Activation", "2.1.1") {
+	library("Jakarta Activation", "2.1.2") {
 		group("jakarta.activation") {
 			modules = [
 				"jakarta.activation-api"
@@ -459,7 +495,7 @@ bom {
 			]
 		}
 	}
-	library("Jakarta Json", "2.1.1") {
+	library("Jakarta Json", "2.1.2") {
 		group("jakarta.json") {
 			modules = [
 				"jakarta.json-api"
@@ -473,7 +509,7 @@ bom {
 			]
 		}
 	}
-	library("Jakarta Mail", "2.1.1") {
+	library("Jakarta Mail", "2.1.2") {
 		group("jakarta.mail") {
 			modules = [
 				"jakarta.mail-api"
@@ -581,21 +617,21 @@ bom {
 			]
 		}
 	}
-	library("Jaxen", "1.2.0") {
+	library("Jaxen", "2.0.0") {
 		group("jaxen") {
 			modules = [
 				"jaxen"
 			]
 		}
 	}
-	library("Jaybird", "4.0.8.java11") {
+	library("Jaybird", "5.0.2.java11") {
 		group("org.firebirdsql.jdbc") {
 			modules = [
 				"jaybird"
 			]
 		}
 	}
-	library("JBoss Logging", "3.5.0.Final") {
+	library("JBoss Logging", "3.5.1.Final") {
 		group("org.jboss.logging") {
 			modules = [
 				"jboss-logging"
@@ -609,28 +645,28 @@ bom {
 			]
 		}
 	}
-	library("Jedis", "4.3.1") {
+	library("Jedis", "4.4.3") {
 		group("redis.clients") {
 			modules = [
 				"jedis"
 			]
 		}
 	}
-	library("Jersey", "3.1.0") {
+	library("Jersey", "3.1.2") {
 		group("org.glassfish.jersey") {
 			imports = [
 				"jersey-bom"
 			]
 		}
 	}
-	library("Jetty Reactive HTTPClient", "3.0.7") {
+	library("Jetty Reactive HTTPClient", "3.0.8") {
 		group("org.eclipse.jetty") {
 			modules = [
 				"jetty-reactive-httpclient"
 			]
 		}
 	}
-	library("Jetty", "11.0.13") {
+	library("Jetty", "11.0.15") {
 		group("org.eclipse.jetty") {
 			imports = [
 				"jetty-bom"
@@ -644,7 +680,7 @@ bom {
 			]
 		}
 	}
-	library("jOOQ", "3.17.7") {
+	library("jOOQ", "3.18.4") {
 		group("org.jooq") {
 			modules = [
 				"jooq",
@@ -657,7 +693,7 @@ bom {
 			]
 		}
 	}
-	library("Json Path", "2.7.0") {
+	library("Json Path", "2.8.0") {
 		group("com.jayway.jsonpath") {
 			modules = [
 				"json-path",
@@ -665,7 +701,7 @@ bom {
 			]
 		}
 	}
-	library("Json-smart", "2.4.8") {
+	library("Json-smart", "2.4.11") {
 		group("net.minidev") {
 			modules = [
 				"json-smart"
@@ -693,14 +729,14 @@ bom {
 			]
 		}
 	}
-	library("JUnit Jupiter", "5.9.2") {
+	library("JUnit Jupiter", "5.9.3") {
 		group("org.junit") {
 			imports = [
 				"junit-bom"
 			]
 		}
 	}
-	library("Kafka", "3.3.2") {
+	library("Kafka", "3.5.0") {
 		group("org.apache.kafka") {
 			modules = [
 				"connect",
@@ -751,21 +787,25 @@ bom {
 			]
 		}
 	}
-	library("Kotlin Coroutines", "1.6.4") {
+	library("Kotlin Coroutines", "1.7.1") {
 		group("org.jetbrains.kotlinx") {
 			imports = [
 				"kotlinx-coroutines-bom"
 			]
 		}
 	}
-	library("Lettuce", "6.2.2.RELEASE") {
+	library("Lettuce", "6.2.4.RELEASE") {
 		group("io.lettuce") {
 			modules = [
 				"lettuce-core"
 			]
 		}
 	}
-	library("Liquibase", "4.17.2") {
+	library("Liquibase", "4.20.0") {
+		prohibit {
+			versionRange "[4.21.0,4.22.0]"
+			because "https://github.com/liquibase/liquibase/issues/4135"
+		}
 		group("org.liquibase") {
 			modules = [
 				"liquibase-cdi",
@@ -776,14 +816,14 @@ bom {
 			]
 		}
 	}
-	library("Log4j2", "2.19.0") {
+	library("Log4j2", "2.20.0") {
 		group("org.apache.logging.log4j") {
 			imports = [
 				"log4j-bom"
 			]
 		}
 	}
-	library("Logback", "1.4.5") {
+	library("Logback", "1.4.8") {
 		group("ch.qos.logback") {
 			modules = [
 				"logback-access",
@@ -792,14 +832,14 @@ bom {
 			]
 		}
 	}
-	library("Lombok", "1.18.24") {
+	library("Lombok", "1.18.28") {
 		group("org.projectlombok") {
 			modules = [
 				"lombok"
 			]
 		}
 	}
-	library("MariaDB", "3.0.10") {
+	library("MariaDB", "3.1.4") {
 		group("org.mariadb.jdbc") {
 			modules = [
 				"mariadb-java-client"
@@ -813,7 +853,7 @@ bom {
 			]
 		}
 	}
-	library("Maven Assembly Plugin", "3.4.2") {
+	library("Maven Assembly Plugin", "3.6.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-assembly-plugin"
@@ -827,56 +867,56 @@ bom {
 			]
 		}
 	}
-	library("Maven Compiler Plugin", "3.10.1") {
+	library("Maven Compiler Plugin", "3.11.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-compiler-plugin"
 			]
 		}
 	}
-	library("Maven Dependency Plugin", "3.3.0") {
+	library("Maven Dependency Plugin", "3.6.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-dependency-plugin"
 			]
 		}
 	}
-	library("Maven Deploy Plugin", "3.0.0") {
+	library("Maven Deploy Plugin", "3.1.1") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-deploy-plugin"
 			]
 		}
 	}
-	library("Maven Enforcer Plugin", "3.1.0") {
+	library("Maven Enforcer Plugin", "3.3.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-enforcer-plugin"
 			]
 		}
 	}
-	library("Maven Failsafe Plugin", "2.22.2") {
+	library("Maven Failsafe Plugin", "3.1.2") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-failsafe-plugin"
 			]
 		}
 	}
-	library("Maven Help Plugin", "3.3.0") {
+	library("Maven Help Plugin", "3.4.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-help-plugin"
 			]
 		}
 	}
-	library("Maven Install Plugin", "3.0.1") {
+	library("Maven Install Plugin", "3.1.1") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-install-plugin"
 			]
 		}
 	}
-	library("Maven Invoker Plugin", "3.3.0") {
+	library("Maven Invoker Plugin", "3.6.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-invoker-plugin"
@@ -890,49 +930,49 @@ bom {
 			]
 		}
 	}
-	library("Maven Javadoc Plugin", "3.4.1") {
+	library("Maven Javadoc Plugin", "3.5.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-javadoc-plugin"
 			]
 		}
 	}
-	library("Maven Resources Plugin", "3.3.0") {
+	library("Maven Resources Plugin", "3.3.1") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-resources-plugin"
 			]
 		}
 	}
-	library("Maven Shade Plugin", "3.4.1") {
+	library("Maven Shade Plugin", "3.5.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-shade-plugin"
 			]
 		}
 	}
-	library("Maven Source Plugin", "3.2.1") {
+	library("Maven Source Plugin", "3.3.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-source-plugin"
 			]
 		}
 	}
-	library("Maven Surefire Plugin", "2.22.2") {
+	library("Maven Surefire Plugin", "3.1.2") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-surefire-plugin"
 			]
 		}
 	}
-	library("Maven War Plugin", "3.3.2") {
+	library("Maven War Plugin", "3.4.0") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-war-plugin"
 			]
 		}
 	}
-	library("Micrometer", "1.11.0-SNAPSHOT") {
+	library("Micrometer", "1.12.0-SNAPSHOT") {
 		group("io.micrometer") {
 			modules = [
 				"micrometer-registry-stackdriver" {
@@ -944,21 +984,21 @@ bom {
 			]
 		}
 	}
-	library("Micrometer Tracing", "1.0.1") {
+	library("Micrometer Tracing", "1.2.0-SNAPSHOT") {
 		group("io.micrometer") {
 			imports = [
 				"micrometer-tracing-bom"
 			]
 		}
 	}
-	library("Mockito", "4.8.1") {
+	library("Mockito", "5.4.0") {
 		group("org.mockito") {
 			imports = [
 				"mockito-bom"
 			]
 		}
 	}
-	library("MongoDB", "4.8.2") {
+	library("MongoDB", "4.9.1") {
 		group("org.mongodb") {
 			modules = [
 				"bson",
@@ -981,7 +1021,7 @@ bom {
 			]
 		}
 	}
-	library("MySQL", "8.0.32") {
+	library("MySQL", "8.0.33") {
 		group("com.mysql") {
 			modules = [
 				"mysql-connector-j" {
@@ -1004,56 +1044,59 @@ bom {
 			]
 		}
 	}
-	library("Neo4j Java Driver", "5.2.0") {
+	library("Neo4j Java Driver", "5.9.0") {
 		group("org.neo4j.driver") {
 			modules = [
 				"neo4j-java-driver"
 			]
 		}
 	}
-	library("Netty", "4.1.87.Final") {
+	library("Netty", "4.1.94.Final") {
 		group("io.netty") {
 			imports = [
 				"netty-bom"
 			]
 		}
 	}
-	library("OkHttp", "4.10.0") {
+	library("OkHttp", "4.11.0") {
 		group("com.squareup.okhttp3") {
 			imports = [
 				"okhttp-bom"
 			]
 		}
 	}
-	library("OpenTelemetry", "1.19.0") {
+	library("OpenTelemetry", "1.27.0") {
 		group("io.opentelemetry") {
 			imports = [
 				"opentelemetry-bom"
 			]
 		}
 	}
-	library("Oracle Database", "21.7.0.0") {
+	library("Oracle Database", "21.9.0.0") {
+		prohibit {
+			versionRange "23.2.0.0"
+		}
 		group("com.oracle.database.jdbc") {
 			imports = [
 				"ojdbc-bom"
 			]
 		}
 	}
-	library("Oracle R2DBC", "1.0.0") {
+	library("Oracle R2DBC", "1.1.1") {
 		group("com.oracle.database.r2dbc") {
 			modules = [
 				"oracle-r2dbc"
 			]
 		}
 	}
-	library("Pooled JMS", "3.0.0") {
+	library("Pooled JMS", "3.1.0") {
 		group("org.messaginghub") {
 			modules = [
 				"pooled-jms"
 			]
 		}
 	}
-	library("Postgresql", "42.5.1") {
+	library("Postgresql", "42.6.0") {
 		group("org.postgresql") {
 			modules = [
 				"postgresql"
@@ -1092,6 +1135,27 @@ bom {
 			]
 		}
 	}
+	library("R2DBC MariaDB", "1.1.4") {
+		group("org.mariadb") {
+			modules = [
+				"r2dbc-mariadb"
+			]
+		}
+	}
+	library("R2DBC MSSQL", "1.0.1.RELEASE") {
+		group ("io.r2dbc") {
+			modules = [
+				"r2dbc-mssql"
+			]
+		}
+	}
+	library("R2DBC MySQL", "1.0.2") {
+		group("io.asyncer") {
+			modules = [
+				"r2dbc-mysql"
+			]
+		}
+	}
 	library("R2DBC Pool", "1.0.0.RELEASE") {
 		group("io.r2dbc") {
 			modules = [
@@ -1099,14 +1163,14 @@ bom {
 			]
 		}
 	}
-	library("R2DBC Postgresql", "1.0.0.RELEASE") {
+	library("R2DBC Postgresql", "1.0.1.RELEASE") {
 		group("org.postgresql") {
 			modules = [
 				"r2dbc-postgresql"
 			]
 		}
 	}
-	library("R2DBC Proxy", "1.0.1.RELEASE") {
+	library("R2DBC Proxy", "1.1.1.RELEASE") {
 		group("io.r2dbc") {
 			modules = [
 				"r2dbc-proxy"
@@ -1120,14 +1184,14 @@ bom {
 			]
 		}
 	}
-	library("Rabbit AMQP Client", "5.16.0") {
+	library("Rabbit AMQP Client", "5.18.0") {
 		group("com.rabbitmq") {
 			modules = [
 				"amqp-client"
 			]
 		}
 	}
-	library("Rabbit Stream Client", "0.8.0") {
+	library("Rabbit Stream Client", "0.10.0") {
 		group("com.rabbitmq") {
 			modules = [
 					"stream-client"
@@ -1141,14 +1205,14 @@ bom {
 			]
 		}
 	}
-	library("Reactor Bom", "2022.0.2") {
+	library("Reactor Bom", "2022.0.8") {
 		group("io.projectreactor") {
 			imports = [
 				"reactor-bom"
 			]
 		}
 	}
-	library("REST Assured", "5.2.1") {
+	library("REST Assured", "5.3.1") {
 		group("io.rest-assured") {
 			imports = [
 				"rest-assured-bom"
@@ -1156,6 +1220,10 @@ bom {
 		}
 	}
 	library("RSocket", "1.1.3") {
+		prohibit {
+			versionRange "1.1.4"
+			because "it contains a regression (https://github.com/rsocket/rsocket-java/issues/1092)"
+		}
 		group("io.rsocket") {
 			imports = [
 				"rsocket-bom"
@@ -1175,6 +1243,7 @@ bom {
 				"spring-boot",
 				"spring-boot-test",
 				"spring-boot-test-autoconfigure",
+				"spring-boot-testcontainers",
 				"spring-boot-actuator",
 				"spring-boot-actuator-autoconfigure",
 				"spring-boot-autoconfigure",
@@ -1183,11 +1252,13 @@ bom {
 				"spring-boot-configuration-metadata",
 				"spring-boot-configuration-processor",
 				"spring-boot-devtools",
+				"spring-boot-docker-compose",
 				"spring-boot-jarmode-layertools",
 				"spring-boot-loader",
 				"spring-boot-loader-tools",
 				"spring-boot-properties-migrator",
 				"spring-boot-starter",
+				"spring-boot-starter-activemq",
 				"spring-boot-starter-actuator",
 				"spring-boot-starter-amqp",
 				"spring-boot-starter-aop",
@@ -1223,6 +1294,7 @@ bom {
 				"spring-boot-starter-logging",
 				"spring-boot-starter-mail",
 				"spring-boot-starter-mustache",
+				"spring-boot-starter-oauth2-authorization-server",
 				"spring-boot-starter-oauth2-client",
 				"spring-boot-starter-oauth2-resource-server",
 				"spring-boot-starter-quartz",
@@ -1244,41 +1316,21 @@ bom {
 			]
 		}
 	}
-	library("SAAJ Impl", "3.0.0") {
+	library("SAAJ Impl", "3.0.2") {
 		group("com.sun.xml.messaging.saaj") {
 			modules = [
 				"saaj-impl"
 			]
 		}
 	}
-	library("Selenium", "4.5.3") {
+	library("Selenium", "4.10.0") {
 		group("org.seleniumhq.selenium") {
-			modules = [
-				"lift",
-				"selenium-api",
-				"selenium-chrome-driver",
-				"selenium-chromium-driver",
-				"selenium-devtools-v104",
-				"selenium-devtools-v105",
-				"selenium-devtools-v106",
-				"selenium-devtools-v85",
-				"selenium-edge-driver",
-				"selenium-firefox-driver",
-				"selenium-grid",
-				"selenium-http",
-				"selenium-http-jdk-client",
-				"selenium-ie-driver",
-				"selenium-java",
-				"selenium-json",
-				"selenium-remote-driver",
-				"selenium-safari-driver",
-				"selenium-session-map-jdbc",
-				"selenium-session-map-redis",
-				"selenium-support",
+			imports = [
+				"selenium-bom"
 			]
 		}
 	}
-	library("Selenium HtmlUnit", "4.5.2") {
+	library("Selenium HtmlUnit", "4.10.0") {
 		group("org.seleniumhq.selenium") {
 			modules = [
 				"htmlunit-driver"
@@ -1292,7 +1344,7 @@ bom {
 			]
 		}
 	}
-	library("SLF4J", "2.0.6") {
+	library("SLF4J", "2.0.7") {
 		group("org.slf4j") {
 			modules = [
 				"jcl-over-slf4j",
@@ -1309,46 +1361,49 @@ bom {
 			]
 		}
 	}
-	library("SnakeYAML", "1.33") {
+	library("SnakeYAML", "2.0") {
 		group("org.yaml") {
 			modules = [
 				"snakeyaml"
 			]
 		}
 	}
-	library("Spring AMQP", "3.0.1") {
+	library("Spring AMQP", "3.0.5") {
 		group("org.springframework.amqp") {
-			modules = [
-				"spring-amqp",
-				"spring-rabbit",
-				"spring-rabbit-stream",
-				"spring-rabbit-junit",
-				"spring-rabbit-test"
+			imports = [
+				"spring-amqp-bom"
 			]
 		}
 	}
-	library("Spring Batch", "5.0.0") {
+	library("Spring Authorization Server", "1.1.1") {
+		group("org.springframework.security") {
+			modules = [
+					"spring-security-oauth2-authorization-server"
+			]
+		}
+	}
+	library("Spring Batch", "5.1.0-SNAPSHOT") {
 		group("org.springframework.batch") {
 			imports = [
 				"spring-batch-bom"
 			]
 		}
 	}
-	library("Spring Data Bom", "2022.0.1") {
+	library("Spring Data Bom", "2023.1.0-SNAPSHOT") {
 		group("org.springframework.data") {
 			imports = [
 				"spring-data-bom"
 			]
 		}
 	}
-	library("Spring Framework", "6.0.4") {
+	library("Spring Framework", "${springFrameworkVersion}") {
 		group("org.springframework") {
 			imports = [
 				"spring-framework-bom"
 			]
 		}
 	}
-	library("Spring GraphQL", "1.1.1") {
+	library("Spring GraphQL", "1.2.2-SNAPSHOT") {
 		group("org.springframework.graphql") {
 			modules = [
 					"spring-graphql",
@@ -1356,21 +1411,21 @@ bom {
 			]
 		}
 	}
-	library("Spring HATEOAS", "2.0.1") {
+	library("Spring HATEOAS", "2.2.0-SNAPSHOT") {
 		group("org.springframework.hateoas") {
 			modules = [
 				"spring-hateoas"
 			]
 		}
 	}
-	library("Spring Integration", "6.0.2") {
+	library("Spring Integration", "6.2.0-SNAPSHOT") {
 		group("org.springframework.integration") {
 			imports = [
 				"spring-integration-bom"
 			]
 		}
 	}
-	library("Spring Kafka", "3.0.2") {
+	library("Spring Kafka", "3.0.9-SNAPSHOT") {
 		group("org.springframework.kafka") {
 			modules = [
 				"spring-kafka",
@@ -1378,11 +1433,10 @@ bom {
 			]
 		}
 	}
-	library("Spring LDAP", "3.0.0") {
+	library("Spring LDAP", "3.2.0-SNAPSHOT") {
 		group("org.springframework.ldap") {
 			modules = [
 				"spring-ldap-core",
-				"spring-ldap-core-tiger",
 				"spring-ldap-ldif-core",
 				"spring-ldap-odm",
 				"spring-ldap-test"
@@ -1396,21 +1450,21 @@ bom {
 			]
 		}
 	}
-	library("Spring Retry", "2.0.0") {
+	library("Spring Retry", "2.0.2") {
 		group("org.springframework.retry") {
 			modules = [
 				"spring-retry"
 			]
 		}
 	}
-	library("Spring Security", "6.0.1") {
+	library("Spring Security", "6.2.0-SNAPSHOT") {
 		group("org.springframework.security") {
 			imports = [
 				"spring-security-bom"
 			]
 		}
 	}
-	library("Spring Session", "3.0.0") {
+	library("Spring Session", "3.2.0-SNAPSHOT") {
 		prohibit {
 			startsWith(["Apple-", "Bean-", "Corn-", "Dragonfruit-"])
 			because "Spring Session switched to numeric version numbers"
@@ -1421,17 +1475,24 @@ bom {
 			]
 		}
 	}
-	library("Spring WS", "4.0.1") {
+	library("Spring WS", "4.0.5") {
 		group("org.springframework.ws") {
 			imports = [
 				"spring-ws-bom"
 			]
 		}
 	}
-	library("SQLite JDBC", "3.39.4.1") {
+	library("SQLite JDBC", "3.42.0.0") {
 		group("org.xerial") {
 			modules = [
 				"sqlite-jdbc"
+			]
+		}
+	}
+	library("Testcontainers", "1.18.3") {
+		group("org.testcontainers") {
+			imports = [
+				"testcontainers-bom"
 			]
 		}
 	}
@@ -1457,7 +1518,7 @@ bom {
 			]
 		}
 	}
-	library("Thymeleaf Layout Dialect", "3.1.0") {
+	library("Thymeleaf Layout Dialect", "3.2.1") {
 		group("nz.net.ultraq.thymeleaf") {
 			modules = [
 				"thymeleaf-layout-dialect"
@@ -1481,14 +1542,14 @@ bom {
 			]
 		}
 	}
-	library("UnboundID LDAPSDK", "6.0.7") {
+	library("UnboundID LDAPSDK", "6.0.9") {
 		group("com.unboundid") {
 			modules = [
 				"unboundid-ldapsdk"
 			]
 		}
 	}
-	library("Undertow", "2.3.3.Final") {
+	library("Undertow", "2.3.7.Final") {
 		group("io.undertow") {
 			modules = [
 				"undertow-core",
@@ -1497,7 +1558,7 @@ bom {
 			]
 		}
 	}
-	library("Versions Maven Plugin", "2.12.0") {
+	library("Versions Maven Plugin", "2.16.0") {
 		group("org.codehaus.mojo") {
 			plugins = [
 				"versions-maven-plugin"
@@ -1538,7 +1599,7 @@ bom {
 			]
 		}
 	}
-	library("Yasson", "3.0.2") {
+	library("Yasson", "3.0.3") {
 		group("org.eclipse") {
 			modules = [
 				"yasson"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointR
 import org.springframework.boot.actuate.web.mappings.MappingsEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -28,14 +29,20 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfiguration {
 
-	@SuppressWarnings("deprecation")
 	@Bean
+	@SuppressWarnings("deprecation")
 	public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
 		return new InMemoryUserDetailsManager(
-				User.withDefaultPasswordEncoder().username("user").password("password").authorities("ROLE_USER")
-						.build(),
-				User.withDefaultPasswordEncoder().username("admin").password("admin")
-						.authorities("ROLE_ACTUATOR", "ROLE_USER").build());
+				User.withDefaultPasswordEncoder()
+					.username("user")
+					.password("password")
+					.authorities("ROLE_USER")
+					.build(),
+				User.withDefaultPasswordEncoder()
+					.username("admin")
+					.password("admin")
+					.authorities("ROLE_ACTUATOR", "ROLE_USER")
+					.build());
 	}
 
 	@Bean
@@ -43,10 +50,10 @@ public class SecurityConfiguration {
 		http.authorizeHttpRequests((requests) -> {
 			requests.requestMatchers(EndpointRequest.to("health")).permitAll();
 			requests.requestMatchers(EndpointRequest.toAnyEndpoint().excluding(MappingsEndpoint.class))
-					.hasRole("ACTUATOR");
+				.hasRole("ACTUATOR");
 			requests.requestMatchers("/**").hasRole("USER");
 		});
-		http.httpBasic();
+		http.httpBasic(Customizer.withDefaults());
 		return http.build();
 	}
 

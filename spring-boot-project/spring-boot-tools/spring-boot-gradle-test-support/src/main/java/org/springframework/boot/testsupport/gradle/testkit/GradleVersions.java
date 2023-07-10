@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.boot.testsupport.gradle.testkit;
 import java.util.Arrays;
 import java.util.List;
 
+import org.gradle.api.JavaVersion;
 import org.gradle.util.GradleVersion;
 
 /**
@@ -31,12 +32,20 @@ public final class GradleVersions {
 	private GradleVersions() {
 	}
 
+	@SuppressWarnings("UnstableApiUsage")
 	public static List<String> allCompatible() {
-		return Arrays.asList("7.5.1", GradleVersion.current().getVersion());
+		if (isJavaVersion(JavaVersion.VERSION_20)) {
+			return Arrays.asList("8.1.1", "8.2");
+		}
+		return Arrays.asList("7.5.1", GradleVersion.current().getVersion(), "8.0.2", "8.2");
 	}
 
 	public static String minimumCompatible() {
 		return allCompatible().get(0);
+	}
+
+	private static boolean isJavaVersion(JavaVersion version) {
+		return JavaVersion.current().isCompatibleWith(version);
 	}
 
 }

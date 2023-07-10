@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.boot.actuate.web.exchanges.reactive;
 
 import java.security.Principal;
+import java.time.Duration;
 import java.util.EnumSet;
 
 import org.junit.jupiter.api.Test;
@@ -58,8 +59,9 @@ class HttpExchangesWebFilterTests {
 	@Test
 	void filterRecordsSessionIdWhenSessionIsUsed() {
 		executeFilter(MockServerWebExchange.from(MockServerHttpRequest.get("https://api.example.com")),
-				(exchange) -> exchange.getSession().doOnNext((session) -> session.getAttributes().put("a", "alpha"))
-						.then());
+				(exchange) -> exchange.getSession()
+					.doOnNext((session) -> session.getAttributes().put("a", "alpha"))
+					.then());
 		assertThat(this.repository.findAll()).hasSize(1);
 		Session session = this.repository.findAll().get(0).getSession();
 		assertThat(session).isNotNull();
@@ -91,15 +93,18 @@ class HttpExchangesWebFilterTests {
 		}, (exchange) -> exchange.getSession().doOnNext((session) -> session.getAttributes().put("a", "alpha")).then());
 		assertThat(this.repository.findAll()).hasSize(1);
 		org.springframework.boot.actuate.web.exchanges.HttpExchange.Principal recordedPrincipal = this.repository
-				.findAll().get(0).getPrincipal();
+			.findAll()
+			.get(0)
+			.getPrincipal();
 		assertThat(recordedPrincipal).isNotNull();
 		assertThat(recordedPrincipal.getName()).isEqualTo("alice");
 	}
 
 	private void executeFilter(ServerWebExchange exchange, WebFilterChain chain) {
-		StepVerifier.create(
-				this.filter.filter(exchange, chain).then(Mono.defer(() -> exchange.getResponse().setComplete())))
-				.verifyComplete();
+		StepVerifier
+			.create(this.filter.filter(exchange, chain).then(Mono.defer(() -> exchange.getResponse().setComplete())))
+			.expectComplete()
+			.verify(Duration.ofSeconds(30));
 	}
 
 }

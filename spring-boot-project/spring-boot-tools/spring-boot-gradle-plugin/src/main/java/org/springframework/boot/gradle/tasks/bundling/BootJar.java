@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,19 @@ package org.springframework.boot.gradle.tasks.bundling;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import org.gradle.api.Action;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ResolvableDependencies;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.CopySpec;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileCopyDetails;
 import org.gradle.api.file.FileTreeElement;
 import org.gradle.api.internal.file.copy.CopyAction;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
@@ -57,13 +59,17 @@ public abstract class BootJar extends Jar implements BootArchive {
 
 	private static final String CLASSPATH_INDEX = "BOOT-INF/classpath.idx";
 
-	private final ResolvedDependencies resolvedDependencies = new ResolvedDependencies();
-
 	private final BootArchiveSupport support;
 
 	private final CopySpec bootInfSpec;
 
 	private final LayeredSpec layered;
+
+	private final Provider<String> projectName;
+
+	private final Provider<Object> projectVersion;
+
+	private final ResolvedDependencies resolvedDependencies;
 
 	private FileCollection classpath;
 
@@ -77,14 +83,9 @@ public abstract class BootJar extends Jar implements BootArchive {
 		this.layered = project.getObjects().newInstance(LayeredSpec.class);
 		configureBootInfSpec(this.bootInfSpec);
 		getMainSpec().with(this.bootInfSpec);
-		project.getConfigurations().all((configuration) -> {
-			ResolvableDependencies incoming = configuration.getIncoming();
-			incoming.afterResolve((resolvableDependencies) -> {
-				if (resolvableDependencies == incoming) {
-					this.resolvedDependencies.processConfiguration(project, configuration);
-				}
-			});
-		});
+		this.projectName = project.provider(project::getName);
+		this.projectVersion = project.provider(project::getVersion);
+		this.resolvedDependencies = new ResolvedDependencies(project);
 	}
 
 	private void configureBootInfSpec(CopySpec bootInfSpec) {
@@ -117,10 +118,20 @@ public abstract class BootJar extends Jar implements BootArchive {
 	}
 
 	@Override
+	public void resolvedArtifacts(Provider<Set<ResolvedArtifactResult>> resolvedArtifacts) {
+		this.resolvedDependencies.resolvedArtifacts(resolvedArtifacts);
+	}
+
+	@Nested
+	ResolvedDependencies getResolvedDependencies() {
+		return this.resolvedDependencies;
+	}
+
+	@Override
 	public void copy() {
 		this.support.configureManifest(getManifest(), getMainClass().get(), CLASSES_DIRECTORY, LIB_DIRECTORY,
 				CLASSPATH_INDEX, (isLayeredDisabled()) ? null : LAYERS_INDEX,
-				this.getTargetJavaVersion().get().getMajorVersion());
+				this.getTargetJavaVersion().get().getMajorVersion(), this.projectName.get(), this.projectVersion.get());
 		super.copy();
 	}
 
@@ -282,11 +293,6 @@ public abstract class BootJar extends Jar implements BootArchive {
 	 */
 	private static <T> Callable<T> callTo(Callable<T> callable) {
 		return callable;
-	}
-
-	@Internal
-	ResolvedDependencies getResolvedDependencies() {
-		return this.resolvedDependencies;
 	}
 
 	private final class LibrarySpec implements Spec<FileCopyDetails> {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -173,19 +173,12 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	private String[] directories;
 
 	/**
-	 * Directory containing the classes and resource files that should be packaged into
-	 * the archive.
+	 * Directory containing the classes and resource files that should be used to run the
+	 * application.
 	 * @since 1.0.0
 	 */
 	@Parameter(defaultValue = "${project.build.outputDirectory}", required = true)
 	private File classesDirectory;
-
-	/**
-	 * Flag to include the test classpath when running.
-	 * @since 1.3.0
-	 */
-	@Parameter(property = "spring-boot.run.useTestClasspath", defaultValue = "false")
-	private Boolean useTestClasspath;
 
 	/**
 	 * Skip the execution.
@@ -200,10 +193,28 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 			getLog().debug("skipping run as per configuration.");
 			return;
 		}
-		String startClass = (this.mainClass != null) ? this.mainClass
-				: SpringBootApplicationClassFinder.findSingleClass(this.classesDirectory);
-		run(startClass);
+		run(determineMainClass());
 	}
+
+	private String determineMainClass() throws MojoExecutionException {
+		if (this.mainClass != null) {
+			return this.mainClass;
+		}
+		return SpringBootApplicationClassFinder.findSingleClass(getClassesDirectories());
+	}
+
+	/**
+	 * Returns the directories that contain the application's classes and resources. When
+	 * the application's main class has not been configured, each directory is searched in
+	 * turn for an appropriate main class.
+	 * @return the directories that contain the application's classes and resources
+	 * @since 3.1.0
+	 */
+	protected List<File> getClassesDirectories() {
+		return List.of(this.classesDirectory);
+	}
+
+	protected abstract boolean isUseTestClasspath();
 
 	private void run(String startClassName) throws MojoExecutionException, MojoFailureException {
 		List<String> args = new ArrayList<>();
@@ -269,9 +280,10 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	protected RunArguments resolveJvmArguments() {
 		StringBuilder stringBuilder = new StringBuilder();
 		if (this.systemPropertyVariables != null) {
-			stringBuilder.append(this.systemPropertyVariables.entrySet().stream()
-					.map((e) -> SystemPropertyFormatter.format(e.getKey(), e.getValue()))
-					.collect(Collectors.joining(" ")));
+			stringBuilder.append(this.systemPropertyVariables.entrySet()
+				.stream()
+				.map((e) -> SystemPropertyFormatter.format(e.getKey(), e.getValue()))
+				.collect(Collectors.joining(" ")));
 		}
 		if (this.jvmArguments != null) {
 			stringBuilder.append(" ").append(this.jvmArguments);
@@ -360,17 +372,21 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 			for (Resource resource : this.project.getResources()) {
 				File directory = new File(resource.getDirectory());
 				urls.add(directory.toURI().toURL());
-				FileUtils.removeDuplicatesFromOutputDirectory(this.classesDirectory, directory);
+				for (File classesDirectory : getClassesDirectories()) {
+					FileUtils.removeDuplicatesFromOutputDirectory(classesDirectory, directory);
+				}
 			}
 		}
 	}
 
 	private void addProjectClasses(List<URL> urls) throws MalformedURLException {
-		urls.add(this.classesDirectory.toURI().toURL());
+		for (File classesDirectory : getClassesDirectories()) {
+			urls.add(classesDirectory.toURI().toURL());
+		}
 	}
 
 	private void addDependencies(List<URL> urls) throws MalformedURLException, MojoExecutionException {
-		Set<Artifact> artifacts = (this.useTestClasspath) ? filterDependencies(this.project.getArtifacts())
+		Set<Artifact> artifacts = (isUseTestClasspath()) ? filterDependencies(this.project.getArtifacts())
 				: filterDependencies(this.project.getArtifacts(), new ExcludeTestScopeArtifactFilter());
 		for (Artifact artifact : artifacts) {
 			if (artifact.getFile() != null) {

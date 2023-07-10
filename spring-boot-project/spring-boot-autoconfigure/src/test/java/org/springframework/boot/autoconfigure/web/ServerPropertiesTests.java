@@ -206,24 +206,6 @@ class ServerPropertiesTests {
 	}
 
 	@Test
-	@SuppressWarnings("removal")
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	void testCustomizeHeaderSize() {
-		bind("server.max-http-header-size", "1MB");
-		assertThat(this.properties.getMaxHttpHeaderSize()).isEqualTo(DataSize.ofMegabytes(1));
-		assertThat(this.properties.getMaxHttpRequestHeaderSize()).isEqualTo(DataSize.ofMegabytes(1));
-	}
-
-	@Test
-	@SuppressWarnings("removal")
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	void testCustomizeHeaderSizeUseBytesByDefault() {
-		bind("server.max-http-header-size", "1024");
-		assertThat(this.properties.getMaxHttpHeaderSize()).isEqualTo(DataSize.ofKilobytes(1));
-		assertThat(this.properties.getMaxHttpRequestHeaderSize()).isEqualTo(DataSize.ofKilobytes(1));
-	}
-
-	@Test
 	void testCustomizeMaxHttpRequestHeaderSize() {
 		bind("server.max-http-request-header-size", "1MB");
 		assertThat(this.properties.getMaxHttpRequestHeaderSize()).isEqualTo(DataSize.ofMegabytes(1));
@@ -389,55 +371,55 @@ class ServerPropertiesTests {
 	@Test
 	void tomcatMinSpareThreadsMatchesProtocolDefault() throws Exception {
 		assertThat(this.properties.getTomcat().getThreads().getMinSpare())
-				.isEqualTo(getDefaultProtocol().getMinSpareThreads());
+			.isEqualTo(getDefaultProtocol().getMinSpareThreads());
 	}
 
 	@Test
 	void tomcatMaxHttpPostSizeMatchesConnectorDefault() {
 		assertThat(this.properties.getTomcat().getMaxHttpFormPostSize().toBytes())
-				.isEqualTo(getDefaultConnector().getMaxPostSize());
+			.isEqualTo(getDefaultConnector().getMaxPostSize());
 	}
 
 	@Test
 	void tomcatBackgroundProcessorDelayMatchesEngineDefault() {
 		assertThat(this.properties.getTomcat().getBackgroundProcessorDelay())
-				.hasSeconds((new StandardEngine().getBackgroundProcessorDelay()));
+			.hasSeconds((new StandardEngine().getBackgroundProcessorDelay()));
 	}
 
 	@Test
 	void tomcatMaxHttpFormPostSizeMatchesConnectorDefault() {
 		assertThat(this.properties.getTomcat().getMaxHttpFormPostSize().toBytes())
-				.isEqualTo(getDefaultConnector().getMaxPostSize());
+			.isEqualTo(getDefaultConnector().getMaxPostSize());
 	}
 
 	@Test
 	void tomcatUriEncodingMatchesConnectorDefault() {
 		assertThat(this.properties.getTomcat().getUriEncoding().name())
-				.isEqualTo(getDefaultConnector().getURIEncoding());
+			.isEqualTo(getDefaultConnector().getURIEncoding());
 	}
 
 	@Test
 	void tomcatRedirectContextRootMatchesDefault() {
 		assertThat(this.properties.getTomcat().getRedirectContextRoot())
-				.isEqualTo(new StandardContext().getMapperContextRootRedirectEnabled());
+			.isEqualTo(new StandardContext().getMapperContextRootRedirectEnabled());
 	}
 
 	@Test
 	void tomcatAccessLogRenameOnRotateMatchesDefault() {
 		assertThat(this.properties.getTomcat().getAccesslog().isRenameOnRotate())
-				.isEqualTo(new AccessLogValve().isRenameOnRotate());
+			.isEqualTo(new AccessLogValve().isRenameOnRotate());
 	}
 
 	@Test
 	void tomcatAccessLogRequestAttributesEnabledMatchesDefault() {
 		assertThat(this.properties.getTomcat().getAccesslog().isRequestAttributesEnabled())
-				.isEqualTo(new AccessLogValve().getRequestAttributesEnabled());
+			.isEqualTo(new AccessLogValve().getRequestAttributesEnabled());
 	}
 
 	@Test
 	void tomcatInternalProxiesMatchesDefault() {
 		assertThat(this.properties.getTomcat().getRemoteip().getInternalProxies())
-				.isEqualTo(new RemoteIpValve().getInternalProxies());
+			.isEqualTo(new RemoteIpValve().getInternalProxies());
 	}
 
 	@Test
@@ -479,16 +461,17 @@ class ServerPropertiesTests {
 	void jettyMaxHttpFormPostSizeMatchesDefault() {
 		JettyServletWebServerFactory jettyFactory = new JettyServletWebServerFactory(0);
 		JettyWebServer jetty = (JettyWebServer) jettyFactory
-				.getWebServer((ServletContextInitializer) (servletContext) -> servletContext
-						.addServlet("formPost", new HttpServlet() {
+			.getWebServer((ServletContextInitializer) (servletContext) -> servletContext
+				.addServlet("formPost", new HttpServlet() {
 
-							@Override
-							protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-									throws ServletException, IOException {
-								req.getParameterMap();
-							}
+					@Override
+					protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+							throws ServletException, IOException {
+						req.getParameterMap();
+					}
 
-						}).addMapping("/form"));
+				})
+				.addMapping("/form"));
 		jetty.start();
 		org.eclipse.jetty.server.Connector connector = jetty.getServer().getConnectors()[0];
 		final AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -534,21 +517,13 @@ class ServerPropertiesTests {
 	@Test
 	void undertowMaxHttpPostSizeMatchesDefault() {
 		assertThat(this.properties.getUndertow().getMaxHttpPostSize().toBytes())
-				.isEqualTo(UndertowOptions.DEFAULT_MAX_ENTITY_SIZE);
-	}
-
-	@Test
-	@Deprecated(since = "3.0.0", forRemoval = true)
-	@SuppressWarnings("removal")
-	void nettyMaxChunkSizeMatchesHttpDecoderSpecDefault() {
-		assertThat(this.properties.getNetty().getMaxChunkSize().toBytes())
-				.isEqualTo(HttpDecoderSpec.DEFAULT_MAX_CHUNK_SIZE);
+			.isEqualTo(UndertowOptions.DEFAULT_MAX_ENTITY_SIZE);
 	}
 
 	@Test
 	void nettyMaxInitialLineLengthMatchesHttpDecoderSpecDefault() {
 		assertThat(this.properties.getNetty().getMaxInitialLineLength().toBytes())
-				.isEqualTo(HttpDecoderSpec.DEFAULT_MAX_INITIAL_LINE_LENGTH);
+			.isEqualTo(HttpDecoderSpec.DEFAULT_MAX_INITIAL_LINE_LENGTH);
 	}
 
 	@Test
@@ -564,7 +539,7 @@ class ServerPropertiesTests {
 	@Test
 	void nettyInitialBufferSizeMatchesHttpDecoderSpecDefault() {
 		assertThat(this.properties.getNetty().getInitialBufferSize().toBytes())
-				.isEqualTo(HttpDecoderSpec.DEFAULT_INITIAL_BUFFER_SIZE);
+			.isEqualTo(HttpDecoderSpec.DEFAULT_INITIAL_BUFFER_SIZE);
 	}
 
 	private Connector getDefaultConnector() {
@@ -573,7 +548,8 @@ class ServerPropertiesTests {
 
 	private AbstractProtocol<?> getDefaultProtocol() throws Exception {
 		return (AbstractProtocol<?>) Class.forName(TomcatServletWebServerFactory.DEFAULT_PROTOCOL)
-				.getDeclaredConstructor().newInstance();
+			.getDeclaredConstructor()
+			.newInstance();
 	}
 
 	private void bind(String name, String value) {

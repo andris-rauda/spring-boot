@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,20 +35,23 @@ import org.springframework.context.annotation.Bean;
  * @author Sergey Kuptsov
  * @author Stephane Nicoll
  * @author Eddú Meléndez
+ * @author Moritz Halbritter
+ * @author Andy Wilkinson
+ * @author Phillip Webb
  * @since 2.0.0
  */
 @AutoConfiguration
 @ConditionalOnClass(InfluxDB.class)
 @EnableConfigurationProperties(InfluxDbProperties.class)
+@ConditionalOnProperty("spring.influx.url")
 public class InfluxDbAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	@ConditionalOnProperty("spring.influx.url")
 	public InfluxDB influxDb(InfluxDbProperties properties, ObjectProvider<InfluxDbOkHttpClientBuilderProvider> builder,
 			ObjectProvider<InfluxDbCustomizer> customizers) {
-		InfluxDB influxDb = new InfluxDBImpl(properties.getUrl(), properties.getUser(), properties.getPassword(),
-				determineBuilder(builder.getIfAvailable()));
+		InfluxDB influxDb = new InfluxDBImpl(properties.getUrl().toString(), properties.getUser(),
+				properties.getPassword(), determineBuilder(builder.getIfAvailable()));
 		customizers.orderedStream().forEach((customizer) -> customizer.customize(influxDb));
 		return influxDb;
 	}

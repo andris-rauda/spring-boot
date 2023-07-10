@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,25 @@
 
 package org.springframework.boot.buildpack.platform.docker;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -37,6 +49,7 @@ import org.springframework.boot.buildpack.platform.docker.type.ContainerReferenc
 import org.springframework.boot.buildpack.platform.docker.type.ContainerStatus;
 import org.springframework.boot.buildpack.platform.docker.type.Image;
 import org.springframework.boot.buildpack.platform.docker.type.ImageArchive;
+import org.springframework.boot.buildpack.platform.docker.type.ImageArchiveManifest;
 import org.springframework.boot.buildpack.platform.docker.type.ImageReference;
 import org.springframework.boot.buildpack.platform.docker.type.VolumeName;
 import org.springframework.boot.buildpack.platform.io.IOBiConsumer;
@@ -53,6 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Phillip Webb
  * @author Scott Frederick
  * @author Rafael Ceccone
+ * @author Moritz Halbritter
  * @since 2.3.0
  */
 public class DockerApi {
@@ -108,16 +122,16 @@ public class DockerApi {
 		return this.jsonStream;
 	}
 
-	private URI buildUrl(String path, Collection<String> params) {
-		return buildUrl(path, StringUtils.toStringArray(params));
+	private URI buildUrl(String path, Collection<?> params) {
+		return buildUrl(path, (params != null) ? params.toArray() : null);
 	}
 
-	private URI buildUrl(String path, String... params) {
+	private URI buildUrl(String path, Object... params) {
 		try {
 			URIBuilder builder = new URIBuilder("/" + API_VERSION + path);
 			int param = 0;
 			while (param < params.length) {
-				builder.addParameter(params[param++], params[param++]);
+				builder.addParameter(Objects.toString(params[param++]), Objects.toString(params[param++]));
 			}
 			return builder.build();
 		}
@@ -177,7 +191,7 @@ public class DockerApi {
 				throws IOException {
 			Assert.notNull(reference, "Reference must not be null");
 			Assert.notNull(listener, "Listener must not be null");
-			URI createUri = buildUrl("/images/create", "fromImage", reference.toString());
+			URI createUri = buildUrl("/images/create", "fromImage", reference);
 			DigestCaptureUpdateListener digestCapture = new DigestCaptureUpdateListener();
 			listener.onStart();
 			try {
@@ -250,7 +264,7 @@ public class DockerApi {
 		}
 
 		/**
-		 * Export the layers of an image.
+		 * Export the layers of an image as {@link TarArchive}s.
 		 * @param reference the reference to export
 		 * @param exports a consumer to receive the layers (contents can only be accessed
 		 * during the callback)
@@ -258,19 +272,49 @@ public class DockerApi {
 		 */
 		public void exportLayers(ImageReference reference, IOBiConsumer<String, TarArchive> exports)
 				throws IOException {
+			exportLayerFiles(reference, (name, path) -> {
+				try (InputStream in = Files.newInputStream(path)) {
+					TarArchive archive = (out) -> StreamUtils.copy(in, out);
+					exports.accept(name, archive);
+				}
+			});
+		}
+
+		/**
+		 * Export the layers of an image as paths to layer tar files.
+		 * @param reference the reference to export
+		 * @param exports a consumer to receive the layer tar file paths (file can only be
+		 * accessed during the callback)
+		 * @throws IOException on IO error
+		 * @since 2.7.10
+		 */
+		public void exportLayerFiles(ImageReference reference, IOBiConsumer<String, Path> exports) throws IOException {
 			Assert.notNull(reference, "Reference must not be null");
 			Assert.notNull(exports, "Exports must not be null");
 			URI saveUri = buildUrl("/images/" + reference + "/get");
 			Response response = http().get(saveUri);
+			ImageArchiveManifest manifest = null;
+			Map<String, Path> layerFiles = new HashMap<>();
 			try (TarArchiveInputStream tar = new TarArchiveInputStream(response.getContent())) {
 				TarArchiveEntry entry = tar.getNextTarEntry();
 				while (entry != null) {
-					if (entry.getName().endsWith("/layer.tar")) {
-						TarArchive archive = (out) -> StreamUtils.copy(tar, out);
-						exports.accept(entry.getName(), archive);
+					if (entry.getName().equals("manifest.json")) {
+						manifest = readManifest(tar);
+					}
+					if (entry.getName().endsWith(".tar")) {
+						layerFiles.put(entry.getName(), copyToTemp(tar));
 					}
 					entry = tar.getNextTarEntry();
 				}
+			}
+			Assert.notNull(manifest, "Manifest not found in image " + reference);
+			for (Map.Entry<String, Path> entry : layerFiles.entrySet()) {
+				String name = entry.getKey();
+				Path path = entry.getValue();
+				if (manifestContainsLayerEntry(manifest, name)) {
+					exports.accept(name, path);
+				}
+				Files.delete(path);
 			}
 		}
 
@@ -304,8 +348,29 @@ public class DockerApi {
 		public void tag(ImageReference sourceReference, ImageReference targetReference) throws IOException {
 			Assert.notNull(sourceReference, "SourceReference must not be null");
 			Assert.notNull(targetReference, "TargetReference must not be null");
-			URI uri = buildUrl("/images/" + sourceReference + "/tag", "repo", targetReference.toString());
+			String tag = targetReference.getTag();
+			String path = "/images/" + sourceReference + "/tag";
+			URI uri = (tag != null) ? buildUrl(path, "repo", targetReference.inTaglessForm(), "tag", tag)
+					: buildUrl(path, "repo", targetReference);
 			http().post(uri).close();
+		}
+
+		private ImageArchiveManifest readManifest(TarArchiveInputStream tar) throws IOException {
+			String manifestContent = new BufferedReader(new InputStreamReader(tar, StandardCharsets.UTF_8)).lines()
+				.collect(Collectors.joining());
+			return ImageArchiveManifest.of(new ByteArrayInputStream(manifestContent.getBytes(StandardCharsets.UTF_8)));
+		}
+
+		private Path copyToTemp(TarArchiveInputStream in) throws IOException {
+			Path path = Files.createTempFile("create-builder-scratch-", null);
+			try (OutputStream out = Files.newOutputStream(path)) {
+				StreamUtils.copy(in, out);
+			}
+			return path;
+		}
+
+		private boolean manifestContainsLayerEntry(ImageArchiveManifest manifest, String layerId) {
+			return manifest.getEntries().stream().anyMatch((content) -> content.getLayers().contains(layerId));
 		}
 
 	}
@@ -339,7 +404,7 @@ public class DockerApi {
 			URI createUri = buildUrl("/containers/create");
 			try (Response response = http().post(createUri, "application/json", config::writeTo)) {
 				return ContainerReference
-						.of(SharedObjectMapper.get().readTree(response.getContent()).at("/Id").asText());
+					.of(SharedObjectMapper.get().readTree(response.getContent()).at("/Id").asText());
 			}
 		}
 
@@ -368,7 +433,7 @@ public class DockerApi {
 		public void logs(ContainerReference reference, UpdateListener<LogUpdateEvent> listener) throws IOException {
 			Assert.notNull(reference, "Reference must not be null");
 			Assert.notNull(listener, "Listener must not be null");
-			String[] params = { "stdout", "1", "stderr", "1", "follow", "1" };
+			Object[] params = { "stdout", "1", "stderr", "1", "follow", "1" };
 			URI uri = buildUrl("/containers/" + reference + "/logs", params);
 			listener.onStart();
 			try {

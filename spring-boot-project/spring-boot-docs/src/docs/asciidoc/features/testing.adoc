@@ -250,17 +250,23 @@ If such test needs access to an `MBeanServer`, consider marking it dirty as well
 
 include::code:MyJmxTests[]
 
+
+
 [[features.testing.spring-boot-applications.metrics]]
 ==== Using Metrics
 Regardless of your classpath, meter registries, except the in-memory backed, are not auto-configured when using `@SpringBootTest`.
 
 If you need to export metrics to a different backend as part of an integration test, annotate it with `@AutoConfigureObservability`.
 
+
+
 [[features.testing.spring-boot-applications.tracing]]
 ==== Using Tracing
 Regardless of your classpath, tracing is not auto-configured when using `@SpringBootTest`.
 
 If you need tracing as part of an integration test, annotate it with `@AutoConfigureObservability`.
+
+
 
 [[features.testing.spring-boot-applications.mocking-beans]]
 ==== Mocking and Spying Beans
@@ -280,7 +286,6 @@ If your test uses one of Spring Boot's test annotations (such as `@SpringBootTes
 To use this feature with a different arrangement, listeners must be explicitly added, as shown in the following example:
 
 include::code:listener/MyTests[]
-
 ====
 
 The following example replaces an existing `RemoteService` bean with a mock implementation:
@@ -491,6 +496,7 @@ When using a random or defined port, a live server is configured and an `HttpGra
 When a MOCK environment is configured, you can also request an `HttpGraphQlTester` bean by annotating your test class with `@AutoConfigureHttpGraphQlTester`:
 
 include::code:GraphQlIntegrationTests[]
+
 
 
 [[features.testing.spring-boot-applications.autoconfigured-spring-data-cassandra]]
@@ -855,15 +861,15 @@ If you <<using#using.structuring-your-code, structure your code>> in a sensible 
 
 It then becomes important not to litter the application's main class with configuration settings that are specific to a particular area of its functionality.
 
-Assume that you are using Spring Batch and you rely on the auto-configuration for it.
+Assume that you are using Spring Data MongoDB, you rely on the auto-configuration for it, and you have enabled auditing.
 You could define your `@SpringBootApplication` as follows:
 
 include::code:MyApplication[]
 
-Because this class is the source configuration for the test, any slice test actually tries to start Spring Batch, which is definitely not what you want to do.
+Because this class is the source configuration for the test, any slice test actually tries to enable Mongo auditing, which is definitely not what you want to do.
 A recommended approach is to move that area-specific configuration to a separate `@Configuration` class at the same level as your application, as shown in the following example:
 
-include::code:MyBatchConfiguration[]
+include::code:MyMongoConfiguration[]
 
 NOTE: Depending on the complexity of your application, you may either have a single `@Configuration` class for your customizations or one class per domain area.
 The latter approach lets you enable it in one of your tests, if necessary, with the `@Import` annotation.
@@ -899,6 +905,195 @@ Spock 2.2 or later can be used to test a Spring Boot application.
 To do so, add a dependency on a `-groovy-4.0` version of Spock's `spock-spring` module to your application's build.
 `spock-spring` integrates Spring's test framework into Spock.
 See https://spockframework.org/spock/docs/2.2-M1/modules.html#_spring_module[the documentation for Spock's Spring module] for further details.
+
+
+
+[[features.testing.testcontainers]]
+=== Testcontainers
+The https://www.testcontainers.org/[Testcontainers] library provides a way to manage services running inside Docker containers.
+It integrates with JUnit, allowing you to write a test class that can start up a container before any of the tests run.
+Testcontainers is especially useful for writing integration tests that talk to a real backend service such as MySQL, MongoDB, Cassandra and others.
+
+Testcontainers can be used in a Spring Boot test as follows:
+
+include::code:vanilla/MyIntegrationTests[]
+
+This will start up a docker container running Neo4j (if Docker is running locally) before any of the tests are run.
+In most cases, you will need to configure the application to connect to the service running in the container.
+
+
+
+[[features.testing.testcontainers.service-connections]]
+==== Service Connections
+A service connection is a connection to any remote service.
+Spring Boot's auto-configuration can consume the details of a service connection and use them to establish a connection to a remote service.
+When doing so, the connection details take precedence over any connection-related configuration properties.
+
+When using Testcontainers, connection details can be automatically created for a service running in a container by annotating the container field in the test class.
+
+include::code:MyIntegrationTests[]
+
+Thanks to `@ServiceConnection`, the above configuration allows Neo4j-related beans in the application to communicate with Neo4j running inside the Testcontainers-managed Docker container.
+This is done by automatically defining a `Neo4jConnectionDetails` bean which is then used by the Neo4j auto-configuration, overriding any connection-related configuration properties.
+
+NOTE: You'll need to add the `spring-boot-testcontainers` module as a test dependency in order to use service connections with Testcontainers.
+
+Service connection annotations are processed by `ContainerConnectionDetailsFactory` classes registered with `spring.factories`.
+A `ContainerConnectionDetailsFactory` can create a `ConnectionDetails` bean based on a specific `Container` subclass, or the Docker image name.
+
+The following service connection factories are provided in the `spring-boot-testcontainers` jar:
+
+|===
+| Connection Details | Matched on
+
+| `CassandraConnectionDetails`
+| Containers of type `CassandraContainer`
+
+| `CouchbaseConnectionDetails`
+| Containers of type `CouchbaseContainer`
+
+| `ElasticsearchConnectionDetails`
+| Containers of type `ElasticsearchContainer`
+
+| `FlywayConnectionDetails`
+| Containers of type `JdbcDatabaseContainer`
+
+| `JdbcConnectionDetails`
+| Containers of type `JdbcDatabaseContainer`
+
+| `KafkaConnectionDetails`
+| Containers of type `KafkaContainer` or `RedpandaContainer`
+
+| `LiquibaseConnectionDetails`
+| Containers of type `JdbcDatabaseContainer`
+
+| `MongoConnectionDetails`
+| Containers of type `MongoDBContainer`
+
+| `Neo4jConnectionDetails`
+| Containers of type `Neo4jContainer`
+
+| `R2dbcConnectionDetails`
+| Containers of type `MariaDBContainer`, `MSSQLServerContainer`, `MySQLContainer`, `OracleContainer`, or `PostgreSQLContainer`
+
+| `RabbitConnectionDetails`
+| Containers of type `RabbitMQContainer`
+
+| `RedisConnectionDetails`
+| Containers named "redis"
+
+| `ZipkinConnectionDetails`
+| Containers named "openzipkin/zipkin"
+|===
+
+[TIP]
+====
+By default all applicable connection details beans will be created for a given `Container`.
+For example, a `PostgreSQLContainer` will create both `JdbcConnectionDetails` and `R2dbcConnectionDetails`.
+
+If you want to create only a subset of the applicable types, you can use the `type` attribute of `@ServiceConnection`.
+====
+
+By default `Container.getDockerImageName()` is used to obtain the name used to find connection details.
+If you are using a custom docker image, you can use the `name` attribute of `@ServiceConnection` to override it.
+
+For example, if you have a `GenericContainer` using a Docker image of `registry.mycompany.com/mirror/myredis`, you'd use `@ServiceConnection(name="redis")` to ensure `RedisConnectionDetails` are created.
+
+
+
+[[features.testing.testcontainers.dynamic-properties]]
+==== Dynamic Properties
+A slightly more verbose but also more flexible alternative to service connections is `@DynamicPropertySource`.
+A static `@DynamicPropertySource` method allows adding dynamic property values to the Spring Environment.
+
+include::code:MyIntegrationTests[]
+
+The above configuration allows Neo4j-related beans in the application to communicate with Neo4j running inside the Testcontainers-managed Docker container.
+
+
+
+[[features.testing.testcontainers.at-development-time]]
+==== Using Testcontainers at Development Time
+As well as using Testcontainers for integration testing, it's also possible to use them at development time.
+This approach allows developers to quickly start containers for the services that the application depends on, removing the need to manually provision things like database servers.
+Using Testcontainers in this way provides functionality similar to Docker Compose, except that your container configuration is in Java rather than YAML.
+
+To use Testcontainers at development time you need to launch your application using your "`test`" classpath rather than "`main`".
+This will allow you to access all declared test dependencies and give you a natural place to write your test configuration.
+
+To create a test launchable version of your application you should create an "`Application`" class in the `src/test` directory.
+For example, if your main application is in `src/main/java/com/example/MyApplication.java`, you should create `src/test/java/com/example/TestMyApplication.java`
+
+The `TestMyApplication` class can use the `SpringApplication.from(...)` method to launch the real application:
+
+include::code:launch/TestMyApplication[]
+
+You'll also need to define the `Container` instances that you want to start along with your application.
+To do this, you need to make sure that the `spring-boot-testcontainers` module has been added as a `test` dependency.
+Once that has been done, you can create a `@TestConfiguration` class that declares `@Bean` methods for the containers you want to start.
+
+You can also annotate your `@Bean` methods with `@ServiceConnection` in order to create `ConnectionDetails` beans.
+See <<features#features.testing.testcontainers.service-connections, the service connections>> section above for details of the supported technologies.
+
+A typical Testcontainers configuration would look like this:
+
+include::code:test/MyContainersConfiguration[]
+
+NOTE: The lifecycle of `Container` beans is automatically managed by Spring Boot.
+Containers will be started and stopped automatically.
+
+Once you have defined your test configuration, you can use the `with(...)` method to attach it to your test launcher:
+
+include::code:test/TestMyApplication[]
+
+You can now launch `TestMyApplication` as you would any regular Java `main` method application to start your application and the containers that it needs to run.
+
+TIP: You can use the Maven goal `spring-boot:test-run` or the Gradle task `bootTestRun` to do this from the command line.
+
+[[features.testing.testcontainers.at-development-time.dynamic-properties]]
+===== Contributing Dynamic Properties at Development Time
+If you want to contribute dynamic properties at development time from your `Container` `@Bean` methods, you can do so by injecting a `DynamicPropertyRegistry`.
+This works in a similar way to the <<features#features.testing.testcontainers.dynamic-properties,`@DynamicPropertySource` annotation>> that you can use in your tests.
+It allows you to add properties that will become available once your container has started.
+
+A typical configuration would look like this:
+
+include::code:MyContainersConfiguration[]
+
+NOTE: Using a `@ServiceConnection` is recommended whenever possible, however, dynamic properties can be a useful fallback for technologies that don't yet have `@ServiceConnection` support.
+
+
+
+[[features.testing.testcontainers.at-development-time.importing-container-declarations]]
+===== Importing Testcontainer Declaration Classes
+A common pattern when using Testcontainers is to declare `Container` instances as static fields.
+Often these fields are defined directly on the test class.
+They can also be declared on a parent class or on an interface that the test implements.
+
+For example, the following `MyContainers` interface declares `mongo` and `neo4j` containers:
+
+include::code:MyContainers[]
+
+If you already have containers defined in this way, or you just prefer this style, you can import these declaration classes rather than defining you containers as `@Bean` methods.
+To do so, add the `@ImportTestcontainers` annotation to your test configuration class:
+
+include::code:MyContainersConfiguration[]
+
+TIP: You can use the `@ServiceConnection` annotation on `Container` fields to establish service connections.
+You can also add <<features#features.testing.testcontainers.dynamic-properties,`@DynamicPropertySource` annotated methods>> to your declaration class.
+
+
+
+[[features.testing.testcontainers.at-development-time.devtools]]
+===== Using DevTools with Testcontainers at Development Time
+When using devtools, you can annotate beans and bean methods with `@RestartScope`.
+Such beans won't be recreated when the devtools restart the application.
+This is especially useful for Testcontainer `Container` beans, as they keep their state despite the application restart.
+
+include::code:MyContainersConfiguration[]
+
+WARNING: If you're using Gradle and want to use this feature, you need to change the configuration of the `spring-boot-devtools` dependency from `developmentOnly` to `testImplementation`.
+With the default scope of `developmentOnly`, the `bootTestRun` task will not pick up changes in your code, as the devtools are not active.
 
 
 

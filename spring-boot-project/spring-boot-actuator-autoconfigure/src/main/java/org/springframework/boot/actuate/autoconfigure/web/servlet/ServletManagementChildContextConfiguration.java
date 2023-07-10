@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.boot.autoconfigure.condition.SearchStrategy;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
+import org.springframework.boot.autoconfigure.web.embedded.JettyVirtualThreadsWebServerFactoryCustomizer;
 import org.springframework.boot.autoconfigure.web.embedded.JettyWebServerFactoryCustomizer;
+import org.springframework.boot.autoconfigure.web.embedded.TomcatVirtualThreadsWebServerFactoryCustomizer;
 import org.springframework.boot.autoconfigure.web.embedded.TomcatWebServerFactoryCustomizer;
 import org.springframework.boot.autoconfigure.web.embedded.UndertowWebServerFactoryCustomizer;
 import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryCustomizer;
@@ -111,8 +113,8 @@ class ServletManagementChildContextConfiguration {
 		@Bean
 		@ConditionalOnBean(name = "securityFilterChainRegistration", search = SearchStrategy.ANCESTORS)
 		DelegatingFilterProxyRegistrationBean securityFilterChainRegistration(HierarchicalBeanFactory beanFactory) {
-			return beanFactory.getParentBeanFactory().getBean("securityFilterChainRegistration",
-					DelegatingFilterProxyRegistrationBean.class);
+			return beanFactory.getParentBeanFactory()
+				.getBean("securityFilterChainRegistration", DelegatingFilterProxyRegistrationBean.class);
 		}
 
 	}
@@ -122,7 +124,8 @@ class ServletManagementChildContextConfiguration {
 
 		ServletManagementWebServerFactoryCustomizer(ListableBeanFactory beanFactory) {
 			super(beanFactory, ServletWebServerFactoryCustomizer.class, TomcatServletWebServerFactoryCustomizer.class,
-					TomcatWebServerFactoryCustomizer.class, JettyWebServerFactoryCustomizer.class,
+					TomcatWebServerFactoryCustomizer.class, TomcatVirtualThreadsWebServerFactoryCustomizer.class,
+					JettyWebServerFactoryCustomizer.class, JettyVirtualThreadsWebServerFactoryCustomizer.class,
 					UndertowServletWebServerFactoryCustomizer.class, UndertowWebServerFactoryCustomizer.class);
 		}
 

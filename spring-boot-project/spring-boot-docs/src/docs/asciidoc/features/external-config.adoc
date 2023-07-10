@@ -24,6 +24,7 @@ Sources are considered in the following order:
 . Command line arguments.
 . `properties` attribute on your tests.
   Available on {spring-boot-test-module-api}/context/SpringBootTest.html[`@SpringBootTest`] and the <<features#features.testing.spring-boot-applications.autoconfigured-tests,test annotations for testing a particular slice of your application>>.
+. {spring-framework-api}/test/context/DynamicPropertySource.html[`@DynamicPropertySource`] annotations in your tests.
 . {spring-framework-api}/test/context/TestPropertySource.html[`@TestPropertySource`] annotations on your tests.
 . <<using#using.devtools.globalsettings,Devtools global settings properties>> in the `$HOME/.config/spring-boot` directory when devtools is active.
 
@@ -35,7 +36,12 @@ Config data files are considered in the following order:
 . <<features#features.external-config.files.profile-specific,Profile-specific application properties>> outside of your packaged jar (`application-\{profile}.properties` and YAML variants).
 
 NOTE: It is recommended to stick with one format for your entire application.
-If you have configuration files with both `.properties` and `.yml` format in the same location, `.properties` takes precedence.
+If you have configuration files with both `.properties` and YAML format in the same location, `.properties` takes precedence.
+
+NOTE: If you use environment variables rather than system properties, most operating systems disallow period-separated key names, but you can use underscores instead (for example, configprop:spring.config.name[format=envvar] instead of configprop:spring.config.name[]).
+See <<features#features.external-config.typesafe-configuration-properties.relaxed-binding.environment-variables>> for details.
+
+NOTE: If your application runs in a servlet container or application server, then JNDI properties (in `java:comp/env`) or servlet context initialization parameters can be used instead of, or as well as, environment variables or system properties.
 
 To provide a concrete example, suppose you develop a `@Component` that uses a `name` property, as shown in the following example:
 
@@ -173,11 +179,6 @@ This search ordering lets you specify default values in one configuration file a
 You can provide default values for your application in `application.properties` (or whatever other basename you choose with `spring.config.name`) in one of the default locations.
 These default values can then be overridden at runtime with a different file located in one of the custom locations.
 
-NOTE: If you use environment variables rather than system properties, most operating systems disallow period-separated key names, but you can use underscores instead (for example, configprop:spring.config.name[format=envvar] instead of configprop:spring.config.name[]).
-See <<features#features.external-config.typesafe-configuration-properties.relaxed-binding.environment-variables>> for details.
-
-NOTE: If your application runs in a servlet container or application server, then JNDI properties (in `java:comp/env`) or servlet context initialization parameters can be used instead of, or as well as, environment variables or system properties.
-
 
 
 [[features.external-config.files.optional-prefix]]
@@ -220,7 +221,7 @@ You cannot use a wildcard in a `classpath:` location.
 [[features.external-config.files.profile-specific]]
 ==== Profile Specific Files
 As well as `application` property files, Spring Boot will also attempt to load profile-specific files using the naming convention `application-\{profile}`.
-For example, if your application activates a profile named `prod` and uses YAML files, then both `application.yml` and `application-prod.yml` will be considered.
+For example, if your application activates a profile named `prod` and uses YAML files, then both `application.yaml` and `application-prod.yaml` will be considered.
 
 Profile-specific properties are loaded from the same locations as standard `application.properties`, with profile-specific files always overriding the non-specific ones.
 If several profiles are specified, a last-wins strategy applies.
@@ -441,7 +442,7 @@ For example, if a secret named `db.password` is mounted at location `/run/secret
 
 [[features.external-config.files.property-placeholders]]
 ==== Property Placeholders
-The values in `application.properties` and `application.yml` are filtered through the existing `Environment` when they are used, so you can refer back to previously defined values (for example, from System properties or environment variables).
+The values in `application.properties` and `application.yaml` are filtered through the existing `Environment` when they are used, so you can refer back to previously defined values (for example, from System properties or environment variables).
 The standard `$\{name}` property-placeholder syntax can be used anywhere within a value.
 Property placeholders can also specify a default value using a `:` to separate the default value from the property name, for example `${name:default}`.
 
@@ -476,7 +477,7 @@ Spring Boot allows you to split a single physical file into multiple logical doc
 Documents are processed in order, from top to bottom.
 Later documents can override the properties defined in earlier ones.
 
-For `application.yml` files, the standard YAML multi-document syntax is used.
+For `application.yaml` files, the standard YAML multi-document syntax is used.
 Three consecutive hyphens represent the end of one document, and the start of the next.
 
 For example, the following file has two logical documents:
@@ -555,7 +556,7 @@ For example, the following specifies that the second document is only active whe
 
 [[features.external-config.encrypting]]
 === Encrypting Properties
-Spring Boot does not provide any built in support for encrypting property values, however, it does provide the hook points necessary to modify values contained in the Spring `Environment`.
+Spring Boot does not provide any built-in support for encrypting property values, however, it does provide the hook points necessary to modify values contained in the Spring `Environment`.
 The `EnvironmentPostProcessor` interface allows you to manipulate the `Environment` before the application starts.
 See <<howto#howto.application.customize-the-environment-or-application-context>> for details.
 
@@ -759,6 +760,7 @@ In these cases, specify the list of types to process using the `@EnableConfigura
 This can be done on any `@Configuration` class, as shown in the following example:
 
 include::code:MyConfiguration[]
+include::code:SomeProperties[]
 
 To use configuration property scanning, add the `@ConfigurationPropertiesScan` annotation to your application.
 Typically, it is added to the main application class that is annotated with `@SpringBootApplication` but it can be added to any `@Configuration` class.
@@ -772,7 +774,7 @@ include::code:MyApplication[]
 When the `@ConfigurationProperties` bean is registered using configuration property scanning or through `@EnableConfigurationProperties`, the bean has a conventional name: `<prefix>-<fqn>`, where `<prefix>` is the environment key prefix specified in the `@ConfigurationProperties` annotation and `<fqn>` is the fully qualified name of the bean.
 If the annotation does not provide any prefix, only the fully qualified name of the bean is used.
 
-The bean name in the example above is `com.example.app-com.example.app.SomeProperties`.
+Assuming that it is in the `com.example.app` package, the bean name of the `SomeProperties` example above is `some.properties-com.example.app.SomeProperties`.
 ====
 
 We recommend that `@ConfigurationProperties` only deal with the environment and, in particular, does not inject other beans from the context.
@@ -836,13 +838,13 @@ With the preceding code, the following properties names can all be used:
 | Property | Note
 
 | `my.main-project.person.first-name`
-| Kebab case, which is recommended for use in `.properties` and `.yml` files.
+| Kebab case, which is recommended for use in `.properties` and YAML files.
 
 | `my.main-project.person.firstName`
 | Standard camel case syntax.
 
 | `my.main-project.person.first_name`
-| Underscore notation, which is an alternative format for use in `.properties` and `.yml` files.
+| Underscore notation, which is an alternative format for use in `.properties` and YAML files.
 
 | `MY_MAINPROJECT_PERSON_FIRSTNAME`
 | Upper case format, which is recommended when using system environment variables.

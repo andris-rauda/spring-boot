@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.boot.buildpack.platform.docker.ssl;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.PrivateKey;
@@ -28,6 +27,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.boot.buildpack.platform.docker.ssl.PrivateKeyParser.DerEncoder;
 
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  *
  * @author Scott Frederick
  * @author Phillip Webb
+ * @author Moritz Halbritter
  */
 class PrivateKeyParserTests {
 
@@ -55,12 +57,31 @@ class PrivateKeyParserTests {
 	}
 
 	@Test
-	void parsePkcs8KeyFile() throws IOException {
-		Path path = this.fileWriter.writeFile("key.pem", PemFileWriter.CA_PRIVATE_KEY);
+	void parsePkcs8RsaKeyFile() throws IOException {
+		Path path = this.fileWriter.writeFile("key.pem", PemFileWriter.PKCS8_PRIVATE_RSA_KEY);
 		PrivateKey privateKey = PrivateKeyParser.parse(path);
 		assertThat(privateKey).isNotNull();
 		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
-		Files.delete(path);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { PemFileWriter.PKCS8_PRIVATE_EC_NIST_P256_KEY, PemFileWriter.PKCS8_PRIVATE_EC_NIST_P384_KEY,
+			PemFileWriter.PKCS8_PRIVATE_EC_PRIME256V1_KEY, PemFileWriter.PKCS8_PRIVATE_EC_SECP256R1_KEY })
+	void parsePkcs8EcKeyFile(String contents) throws IOException {
+		Path path = this.fileWriter.writeFile("key.pem", contents);
+		PrivateKey privateKey = PrivateKeyParser.parse(path);
+		assertThat(privateKey).isNotNull();
+		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
+		assertThat(privateKey.getAlgorithm()).isEqualTo("EC");
+	}
+
+	@Test
+	void parsePkcs8DsaKeyFile() throws IOException {
+		Path path = this.fileWriter.writeFile("key.pem", PemFileWriter.PRIVATE_DSA_KEY);
+		PrivateKey privateKey = PrivateKeyParser.parse(path);
+		assertThat(privateKey).isNotNull();
+		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
+		assertThat(privateKey.getAlgorithm()).isEqualTo("DSA");
 	}
 
 	@Test
@@ -70,7 +91,6 @@ class PrivateKeyParserTests {
 		assertThat(privateKey).isNotNull();
 		// keys in PKCS#1 format are converted to PKCS#8 for parsing
 		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
-		Files.delete(path);
 	}
 
 	@Test
@@ -80,22 +100,29 @@ class PrivateKeyParserTests {
 		assertThat(privateKey).isNotNull();
 		// keys in PKCS#1 format are converted to PKCS#8 for parsing
 		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
-		Files.delete(path);
+	}
+
+	@Test
+	void parsePkcs8Ed25519KeyFile() throws IOException {
+		Path path = this.fileWriter.writeFile("key.pem", PemFileWriter.PKCS8_PRIVATE_EC_ED25519_KEY);
+		PrivateKey privateKey = PrivateKeyParser.parse(path);
+		assertThat(privateKey).isNotNull();
+		assertThat(privateKey.getFormat()).isEqualTo("PKCS#8");
+		assertThat(privateKey.getAlgorithm()).isEqualTo("EdDSA");
 	}
 
 	@Test
 	void parseWithNonKeyFileWillThrowException() throws IOException {
 		Path path = this.fileWriter.writeFile("text.pem", "plain text");
 		assertThatIllegalStateException().isThrownBy(() -> PrivateKeyParser.parse(path))
-				.withMessageContaining(path.toString());
-		Files.delete(path);
+			.withMessageContaining(path.toString());
 	}
 
 	@Test
 	void parseWithInvalidPathWillThrowException() throws URISyntaxException {
 		Path path = Paths.get(new URI("file:///bad/path/key.pem"));
 		assertThatIllegalStateException().isThrownBy(() -> PrivateKeyParser.parse(path))
-				.withMessageContaining(path.toString());
+			.withMessageContaining(path.toString());
 	}
 
 	@Nested

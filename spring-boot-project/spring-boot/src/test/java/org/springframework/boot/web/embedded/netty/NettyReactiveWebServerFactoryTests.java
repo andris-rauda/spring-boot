@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Arrays;
 
 import io.netty.channel.Channel;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import reactor.core.CoreSubscriber;
@@ -67,7 +68,8 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 		this.webServer.start();
 		factory.setPort(this.webServer.getPort());
 		assertThatExceptionOfType(PortInUseException.class).isThrownBy(factory.getWebServer(new EchoHandler())::start)
-				.satisfies(this::portMatchesRequirement).withCauseInstanceOf(Throwable.class);
+			.satisfies(this::portMatchesRequirement)
+			.withCauseInstanceOf(Throwable.class);
 	}
 
 	@Test
@@ -108,8 +110,7 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 	@Test
 	void whenSslIsConfiguredWithAValidAliasARequestSucceeds() {
 		Mono<String> result = testSslWithAlias("test-alias");
-		StepVerifier.setDefaultTimeout(Duration.ofSeconds(30));
-		StepVerifier.create(result).expectNext("Hello World").verifyComplete();
+		StepVerifier.create(result).expectNext("Hello World").expectComplete().verify(Duration.ofSeconds(30));
 	}
 
 	@Test
@@ -135,6 +136,12 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 		this.webServer.stop();
 	}
 
+	@Override
+	@Test
+	@Disabled("Reactor Netty does not support mutiple ports")
+	protected void startedLogMessageWithMultiplePorts() {
+	}
+
 	protected Mono<String> testSslWithAlias(String alias) {
 		String keyStore = "classpath:test.jks";
 		String keyPassword = "password";
@@ -147,15 +154,31 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 		this.webServer = factory.getWebServer(new EchoHandler());
 		this.webServer.start();
 		ReactorClientHttpConnector connector = buildTrustAllSslConnector();
-		WebClient client = WebClient.builder().baseUrl("https://localhost:" + this.webServer.getPort())
-				.clientConnector(connector).build();
-		return client.post().uri("/test").contentType(MediaType.TEXT_PLAIN).body(BodyInserters.fromValue("Hello World"))
-				.retrieve().bodyToMono(String.class);
+		WebClient client = WebClient.builder()
+			.baseUrl("https://localhost:" + this.webServer.getPort())
+			.clientConnector(connector)
+			.build();
+		return client.post()
+			.uri("/test")
+			.contentType(MediaType.TEXT_PLAIN)
+			.body(BodyInserters.fromValue("Hello World"))
+			.retrieve()
+			.bodyToMono(String.class);
 	}
 
 	@Override
 	protected NettyReactiveWebServerFactory getFactory() {
 		return new NettyReactiveWebServerFactory(0);
+	}
+
+	@Override
+	protected String startedLogMessage() {
+		return ((NettyWebServer) this.webServer).getStartedLogMessage();
+	}
+
+	@Override
+	protected void addConnector(int port, AbstractReactiveWebServerFactory factory) {
+		throw new UnsupportedOperationException("Reactor Netty does not support multiple ports");
 	}
 
 	static class NoPortNettyReactiveWebServerFactory extends NettyReactiveWebServerFactory {

@@ -30,7 +30,7 @@ import org.gradle.api.Project;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.Sync;
 
-import org.springframework.boot.build.artifactory.ArtifactoryRepository;
+import org.springframework.boot.build.artifacts.ArtifactRelease;
 import org.springframework.util.StringUtils;
 
 /**
@@ -59,6 +59,7 @@ import org.springframework.util.StringUtils;
  * </ul>
  *
  * @author Andy Wilkinson
+ * @author Scott Frederick
  */
 class AsciidoctorConventions {
 
@@ -71,8 +72,9 @@ class AsciidoctorConventions {
 			makeAllWarningsFatal(project);
 			upgradeAsciidoctorJVersion(project);
 			createAsciidoctorExtensionsConfiguration(project);
-			project.getTasks().withType(AbstractAsciidoctorTask.class,
-					(asciidoctorTask) -> configureAsciidoctorTask(project, asciidoctorTask));
+			project.getTasks()
+				.withType(AbstractAsciidoctorTask.class,
+						(asciidoctorTask) -> configureAsciidoctorTask(project, asciidoctorTask));
 		});
 	}
 
@@ -86,12 +88,14 @@ class AsciidoctorConventions {
 
 	private void createAsciidoctorExtensionsConfiguration(Project project) {
 		project.getConfigurations().create(EXTENSIONS_CONFIGURATION_NAME, (configuration) -> {
-			project.getConfigurations().matching((candidate) -> "dependencyManagement".equals(candidate.getName()))
-					.all(configuration::extendsFrom);
-			configuration.getDependencies().add(project.getDependencies()
-					.create("io.spring.asciidoctor.backends:spring-asciidoctor-backends:0.0.4"));
+			project.getConfigurations()
+				.matching((candidate) -> "dependencyManagement".equals(candidate.getName()))
+				.all(configuration::extendsFrom);
 			configuration.getDependencies()
-					.add(project.getDependencies().create("org.asciidoctor:asciidoctorj-pdf:1.5.3"));
+				.add(project.getDependencies()
+					.create("io.spring.asciidoctor.backends:spring-asciidoctor-backends:0.0.5"));
+			configuration.getDependencies()
+				.add(project.getDependencies().create("org.asciidoctor:asciidoctorj-pdf:1.5.3"));
 		});
 	}
 
@@ -110,10 +114,12 @@ class AsciidoctorConventions {
 	}
 
 	private void configureCommonAttributes(Project project, AbstractAsciidoctorTask asciidoctorTask) {
+		ArtifactRelease artifacts = ArtifactRelease.forProject(project);
 		Map<String, Object> attributes = new HashMap<>();
 		attributes.put("attribute-missing", "warn");
 		attributes.put("github-tag", determineGitHubTag(project));
-		attributes.put("spring-boot-artifactory-repo", ArtifactoryRepository.forProject(project));
+		attributes.put("artifact-release-type", artifacts.getType());
+		attributes.put("artifact-download-repo", artifacts.getDownloadRepo());
 		attributes.put("revnumber", null);
 		asciidoctorTask.attributes(attributes);
 	}
@@ -137,13 +143,15 @@ class AsciidoctorConventions {
 
 	private Sync createSyncDocumentationSourceTask(Project project, AbstractAsciidoctorTask asciidoctorTask) {
 		Sync syncDocumentationSource = project.getTasks()
-				.create("syncDocumentationSourceFor" + StringUtils.capitalize(asciidoctorTask.getName()), Sync.class);
+			.create("syncDocumentationSourceFor" + StringUtils.capitalize(asciidoctorTask.getName()), Sync.class);
 		File syncedSource = new File(project.getBuildDir(), "docs/src/" + asciidoctorTask.getName());
 		syncDocumentationSource.setDestinationDir(syncedSource);
 		syncDocumentationSource.from("src/docs/");
 		asciidoctorTask.dependsOn(syncDocumentationSource);
-		asciidoctorTask.getInputs().dir(syncedSource).withPathSensitivity(PathSensitivity.RELATIVE)
-				.withPropertyName("synced source");
+		asciidoctorTask.getInputs()
+			.dir(syncedSource)
+			.withPathSensitivity(PathSensitivity.RELATIVE)
+			.withPropertyName("synced source");
 		asciidoctorTask.setSourceDir(project.relativePath(new File(syncedSource, "asciidoc/")));
 		return syncDocumentationSource;
 	}

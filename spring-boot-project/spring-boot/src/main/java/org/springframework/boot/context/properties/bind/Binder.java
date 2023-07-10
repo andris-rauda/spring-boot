@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +55,7 @@ import org.springframework.util.Assert;
 public class Binder {
 
 	private static final Set<Class<?>> NON_BEAN_CLASSES = Collections
-			.unmodifiableSet(new HashSet<>(Arrays.asList(Object.class, Class.class)));
+		.unmodifiableSet(new HashSet<>(Arrays.asList(Object.class, Class.class)));
 
 	private final Iterable<ConfigurationPropertySource> sources;
 
@@ -64,7 +65,7 @@ public class Binder {
 
 	private final BindHandler defaultBindHandler;
 
-	private final List<DataObjectBinder> dataObjectBinders;
+	private final Map<BindMethod, List<DataObjectBinder>> dataObjectBinders;
 
 	/**
 	 * Create a new {@link Binder} instance for the specified sources. A
@@ -194,7 +195,11 @@ public class Binder {
 		}
 		ValueObjectBinder valueObjectBinder = new ValueObjectBinder(constructorProvider);
 		JavaBeanBinder javaBeanBinder = JavaBeanBinder.INSTANCE;
-		this.dataObjectBinders = Collections.unmodifiableList(Arrays.asList(valueObjectBinder, javaBeanBinder));
+		Map<BindMethod, List<DataObjectBinder>> dataObjectBinders = new HashMap<>();
+		dataObjectBinders.put(BindMethod.VALUE_OBJECT, List.of(valueObjectBinder));
+		dataObjectBinders.put(BindMethod.JAVA_BEAN, List.of(javaBeanBinder));
+		dataObjectBinders.put(null, List.of(valueObjectBinder, javaBeanBinder));
+		this.dataObjectBinders = Collections.unmodifiableMap(dataObjectBinders);
 	}
 
 	/**
@@ -365,7 +370,7 @@ public class Binder {
 	}
 
 	private Object create(Bindable<?> target, Context context) {
-		for (DataObjectBinder dataObjectBinder : this.dataObjectBinders) {
+		for (DataObjectBinder dataObjectBinder : this.dataObjectBinders.get(target.getBindMethod())) {
 			Object instance = dataObjectBinder.create(target, context);
 			if (instance != null) {
 				return instance;
@@ -466,13 +471,14 @@ public class Binder {
 			return null;
 		}
 		Class<?> type = target.getType().resolve(Object.class);
+		BindMethod bindMethod = target.getBindMethod();
 		if (!allowRecursiveBinding && context.isBindingDataObject(type)) {
 			return null;
 		}
 		DataObjectPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName),
 				propertyTarget, handler, context, false, false);
 		return context.withDataObject(type, () -> {
-			for (DataObjectBinder dataObjectBinder : this.dataObjectBinders) {
+			for (DataObjectBinder dataObjectBinder : this.dataObjectBinders.get(bindMethod)) {
 				Object instance = dataObjectBinder.bind(name, target, context, propertyBinder);
 				if (instance != null) {
 					return instance;

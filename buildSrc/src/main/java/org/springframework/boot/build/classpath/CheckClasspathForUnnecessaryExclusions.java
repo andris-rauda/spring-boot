@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.springframework.boot.build.classpath;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -67,8 +66,8 @@ public class CheckClasspathForUnnecessaryExclusions extends DefaultTask {
 			ConfigurationContainer configurations) {
 		this.dependencyHandler = getProject().getDependencies();
 		this.configurations = getProject().getConfigurations();
-		this.platform = this.dependencyHandler.create(
-				this.dependencyHandler.platform(this.dependencyHandler.project(SPRING_BOOT_DEPENDENCIES_PROJECT)));
+		this.platform = this.dependencyHandler
+			.create(this.dependencyHandler.platform(this.dependencyHandler.project(SPRING_BOOT_DEPENDENCIES_PROJECT)));
 		getOutputs().upToDateWhen((task) -> true);
 	}
 
@@ -86,8 +85,10 @@ public class CheckClasspathForUnnecessaryExclusions extends DefaultTask {
 
 	private void processDependency(ModuleDependency dependency) {
 		String dependencyId = getId(dependency);
-		TreeSet<String> exclusions = dependency.getExcludeRules().stream().map(this::getId)
-				.collect(Collectors.toCollection(TreeSet::new));
+		TreeSet<String> exclusions = dependency.getExcludeRules()
+			.stream()
+			.map(this::getId)
+			.collect(Collectors.toCollection(TreeSet::new));
 		this.exclusionsByDependencyId.put(dependencyId, exclusions);
 		if (!exclusions.isEmpty()) {
 			this.dependencyById.put(dependencyId, getProject().getDependencies().create(dependencyId));
@@ -105,9 +106,13 @@ public class CheckClasspathForUnnecessaryExclusions extends DefaultTask {
 		this.exclusionsByDependencyId.forEach((dependencyId, exclusions) -> {
 			if (!exclusions.isEmpty()) {
 				Dependency toCheck = this.dependencyById.get(dependencyId);
-				List<String> dependencies = this.configurations.detachedConfiguration(toCheck, this.platform)
-						.getIncoming().getArtifacts().getArtifacts().stream().map(this::getId).toList();
-				exclusions.removeAll(dependencies);
+				this.configurations.detachedConfiguration(toCheck, this.platform)
+					.getIncoming()
+					.getArtifacts()
+					.getArtifacts()
+					.stream()
+					.map(this::getId)
+					.forEach(exclusions::remove);
 				removeProfileExclusions(dependencyId, exclusions);
 				if (!exclusions.isEmpty()) {
 					unnecessaryExclusions.put(dependencyId, exclusions);
